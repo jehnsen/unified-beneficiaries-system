@@ -1,0 +1,390 @@
+# ==================================================
+# UBIS Provincial Grid - Git Ignore File
+# ==================================================
+# Laravel 11.x Project
+# ==================================================
+
+# ==================================================
+# Environment & Configuration Files (NEVER COMMIT)
+# ==================================================
+.env
+.env.local
+.env.*.local
+.env.backup
+.env.production
+.env.staging
+.env.testing
+
+# PHP dotenv
+.php_cs.cache
+
+# ==================================================
+# Laravel Storage & Cache
+# ==================================================
+/storage/*.key
+/storage/app/*
+!/storage/app/.gitignore
+!/storage/app/public
+!/storage/app/public/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# Public Storage Link
+/public/storage
+
+# Disbursement Proofs (Uploaded Files - CRITICAL: Don't Commit Beneficiary Data)
+/public/disbursement_proofs/*
+/storage/app/disbursement_proofs/*
+
+# ==================================================
+# Dependencies & Packages
+# ==================================================
+/vendor/
+/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Composer
+composer.phar
+composer.lock
+
+# NPM/Yarn
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ==================================================
+# Build & Compiled Files
+# ==================================================
+/public/hot
+/public/build
+/public/mix-manifest.json
+/public/js/app.js
+/public/css/app.css
+
+# Vite
+/public/vite.json
+vite.config.js.timestamp-*
+
+# Mix
+/public/mix-manifest.json
+
+# ==================================================
+# IDE & Editor Files
+# ==================================================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# PhpStorm / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+
+# Eclipse
+.buildpath
+.project
+.settings/
+
+# Visual Studio
+.vs/
+
+# ==================================================
+# Operating System Files
+# ==================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# ==================================================
+# Laravel Specific
+# ==================================================
+
+# Laravel IDE Helper
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+
+# Laravel Telescope
+/public/vendor/telescope
+
+# Laravel Debugbar
+/public/vendor/debugbar
+
+# Laravel Backup
+/storage/app/backup-temp/
+*.backup
+
+# Laravel Homestead / Vagrant
+Homestead.yaml
+Homestead.json
+.vagrant/
+
+# Laravel Sail
+docker-compose.override.yml
+
+# ==================================================
+# Testing & Coverage
+# ==================================================
+.phpunit.result.cache
+phpunit.xml
+/coverage/
+.phpunit.cache/
+/phpunit-coverage/
+.coverage
+.coverage.*
+
+# Pest PHP
+.pest/
+
+# ==================================================
+# Logs & Temporary Files
+# ==================================================
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Application logs
+/storage/logs/*.log
+laravel.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ==================================================
+# Database Files (Local Development)
+# ==================================================
+*.sqlite
+*.sqlite3
+*.db
+/database/*.sqlite
+/database/*.sqlite3
+/database/*.db
+
+# Database dumps (NEVER commit real data)
+*.sql
+*.dump
+*.bak
+/database/backups/
+
+# ==================================================
+# Security & Credentials (CRITICAL: NEVER COMMIT)
+# ==================================================
+
+# SSH Keys
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+
+# API Keys & Secrets
+secrets.json
+credentials.json
+service-account.json
+firebase-credentials.json
+
+# OAuth Tokens
+.oauth/
+.credentials/
+
+# ==================================================
+# Build Tools & CI/CD
+# ==================================================
+
+# GitHub Actions
+.github/workflows/*.yml.backup
+
+# GitLab CI
+.gitlab-ci.local.yml
+
+# CircleCI
+.circleci/local/
+
+# Travis CI
+.travis.local.yml
+
+# ==================================================
+# Documentation Drafts (Keep finalized docs)
+# ==================================================
+/docs/drafts/
+/docs/temp/
+*.draft.md
+
+# ==================================================
+# Postman (Keep collections, ignore environment files)
+# ==================================================
+*.postman_environment.json
+!UBIS_Provincial_Grid.postman_environment.json
+
+# Ignore local/private Postman files
+*_local.postman_*.json
+*_private.postman_*.json
+
+# ==================================================
+# PHP Specific
+# ==================================================
+*.php~
+.php_tmp
+
+# PHP CS Fixer
+.php-cs-fixer.cache
+.php-cs-fixer.php
+
+# PHPStan
+phpstan.neon.dist
+/phpstan-baseline.neon
+
+# Psalm
+psalm.xml
+/psalm-baseline.xml
+
+# PHPMD
+phpmd.xml
+
+# ==================================================
+# Miscellaneous
+# ==================================================
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Temporary uploads (testing)
+/public/temp/
+/public/uploads/temp/
+
+# Reports
+/reports/
+
+# Cache
+.cache/
+*.cache
+
+# ==================================================
+# Production Deployment (Git-based)
+# ==================================================
+
+# Deployer
+.dep/
+deployer.phar
+
+# Forge
+forge.yml
+
+# Envoyer
+envoyer.yml
+
+# ==================================================
+# Allow These Files (Override Rules)
+# ==================================================
+!.gitignore
+!.editorconfig
+!.env.example
+!storage/app/.gitignore
+!storage/app/public/.gitignore
+!storage/framework/.gitignore
+!storage/framework/cache/.gitignore
+!storage/framework/sessions/.gitignore
+!storage/framework/testing/.gitignore
+!storage/framework/views/.gitignore
+!storage/logs/.gitignore
+!public/.gitignore
+
+# ==================================================
+# Project-Specific Ignores (UBIS)
+# ==================================================
+
+# Test beneficiary photos (development only)
+/tests/fixtures/photos/
+/tests/fixtures/signatures/
+
+# Municipality logos (commit placeholders, not actual files)
+/public/images/municipalities/*.jpg
+/public/images/municipalities/*.png
+!/public/images/municipalities/.gitkeep
+
+# Generated reports (audit/compliance)
+/storage/app/reports/*.pdf
+/storage/app/reports/*.xlsx
+
+# Temporary fraud detection cache
+/storage/app/fraud_cache/
+
+# ==================================================
+# End of .gitignore
+# ==================================================

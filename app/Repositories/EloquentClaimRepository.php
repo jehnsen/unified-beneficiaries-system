@@ -1,0 +1,122 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repositories;
+
+use App\Interfaces\ClaimRepositoryInterface;
+use App\Models\Claim;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+
+class EloquentClaimRepository implements ClaimRepositoryInterface
+{
+    /**
+     * Create a new claim.
+     */
+    public function create(array $data): Claim
+    {
+        return Claim::create($data);
+    }
+
+    /**
+     * Find claim by ID.
+     */
+    public function findById(int $id): ?Claim
+    {
+        return Claim::with(['beneficiary', 'municipality', 'processedBy'])->find($id);
+    }
+
+    /**
+     * Get recent claims for a beneficiary across ALL municipalities.
+     * Critical for fraud detection - ignores tenant scope.
+     */
+    public function getRecentClaimsForBeneficiary(
+        int $beneficiaryId,
+        int $days = 90,
+        ?string $assistanceType = null
+    ): Collection {
+        $query = Claim::where('beneficiary_id', $beneficiaryId)
+            ->where('created_at', '>=', now()->subDays($days))
+            ->whereIn('status', ['APPROVED', 'DISBURSED', 'PENDING', 'UNDER_REVIEW']);
+
+        if ($assistanceType) {
+            $query->where('assistance_type', $assistanceType);
+        }
+
+        return $query->with('municipality')
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Get all claims for a specific municipality.
+     */
+    public function getByMunicipality(int $municipalityId, ?string $status = null): Collection
+    {
+        $query = Claim::where('municipality_id', $municipalityId);
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        return $query->with(['beneficiary', 'processedBy'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Update claim status with audit trail.
+     */
+    public function updateStatus(int $claimId, string $status, int $processedByUserId, ?string $reason = null): Claim
+    {
+        $claim = Claim::findOrFail($claimId);
+
+        $updateData = [
+            'status' => $status,
+            'processed_by_user_id' => $processedByUserId,
+        ];
+
+        // Set appropriate timestamp based on status
+        switch ($status) {
+            case 'APPROVED':
+                $updateData['approved_at'] = now();
+                break;
+            case 'REJECTED':
+            case 'CANCELLED':
+                $updateData['rejected_at'] = now();
+                if ($reason) {
+                    $updateData['rejection_reason'] = $reason;
+                }
+                break;
+            case 'DISBURSED':
+                $updateData['disbursed_at'] = now();
+                break;
+        }
+
+        $claim->update($updateData);
+
+        return $claim->fresh();
+    }
+
+    /**
+     * Get flagged claims for review.
+     */
+    public function getFlaggedClaims(int $municipalityId): Collection
+    {
+        return Claim::where('municipality_id', $municipalityId)
+            ->where('is_flagged', true)
+            ->whereIn('status', ['PENDING', 'UNDER_REVIEW'])
+            ->with(['beneficiary', 'processedBy'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Mark claim as disbursed with timestamp.
+     */
+    public function markAsDisbursed(int $claimId, int $userId): Claim
+    {
+        return $this->updateStatus($claimId, 'DISBURSED', $userId);
+    }
+}
