@@ -101,7 +101,7 @@ class FraudDetectionService
         }
 
         // Determine risk level
-        $riskLevel = $this->calculateRiskLevel($riskFlags->count(), $allClaims);
+        $riskLevel = $this->calculateRiskLevel(count($riskFlags), $allClaims);
 
         return new RiskAssessmentResult(
             isRisky: !empty($riskFlags),
