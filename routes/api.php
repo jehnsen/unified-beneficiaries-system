@@ -94,8 +94,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ============================================================
     // DASHBOARD
     // ============================================================
-    Route::get('/dashboard/summary', [DashboardController::class, 'summary'])
-        ->name('dashboard.summary');
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/summary', [DashboardController::class, 'summary'])
+            ->name('dashboard.summary');
+        Route::get('/metrics-cards', [DashboardController::class, 'metricsCards'])
+            ->name('dashboard.metrics-cards');
+        Route::get('/assistance-distribution', [DashboardController::class, 'assistanceDistribution'])
+            ->name('dashboard.assistance-distribution');
+        Route::get('/disbursement-velocity', [DashboardController::class, 'disbursementVelocity'])
+            ->name('dashboard.disbursement-velocity');
+        Route::get('/recent-transactions', [DashboardController::class, 'recentTransactions'])
+            ->name('dashboard.recent-transactions');
+    });
 
     // ============================================================
     // INTAKE MODULE - Search, Assess, and Create Claims

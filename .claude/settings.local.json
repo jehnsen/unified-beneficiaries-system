@@ -14,7 +14,14 @@
       "Bash(php artisan migrate:*)",
       "Bash(php artisan route:list:*)",
       "Bash(php artisan tinker:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan cache:clear:*)",
+      "Bash(pgrep:*)",
+      "Bash(pkill:*)",
+      "Bash(php artisan:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)"
     ]
   }
 }

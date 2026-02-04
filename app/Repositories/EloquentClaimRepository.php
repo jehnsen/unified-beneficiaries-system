@@ -124,15 +124,24 @@ class EloquentClaimRepository implements ClaimRepositoryInterface
 
     /**
      * Get flagged claims for review.
+     *
+     * Provincial staff (municipalityId = 0) can see ALL flagged claims.
+     * Municipal staff only see their own municipality's flagged claims.
      */
     public function getFlaggedClaims(int $municipalityId): Collection
     {
-        return Claim::where('municipality_id', $municipalityId)
+        $query = Claim::query()
             ->where('is_flagged', true)
             ->whereIn('status', ['PENDING', 'UNDER_REVIEW'])
-            ->with(['beneficiary', 'processedBy'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+            ->with(['beneficiary', 'municipality', 'processedBy'])
+            ->orderBy('created_at', 'desc');
+
+        // Filter by municipality for municipal staff only
+        if ($municipalityId > 0) {
+            $query->where('municipality_id', $municipalityId);
+        }
+
+        return $query->get();
     }
 
     /**
