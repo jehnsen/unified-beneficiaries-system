@@ -377,6 +377,98 @@ class DashboardController extends Controller
     }
 
     /**
+     * Get fraud alerts summary with actionable metrics.
+     * Provides data for the Fraud Alerts page with pending, investigating, and blocked counts.
+     */
+    public function fraudAlerts(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $isProvincial = $user->isProvincialStaff();
+        $municipalityId = $user->municipality_id;
+
+        $claimQuery = Claim::withoutGlobalScopes();
+        if (!$isProvincial) {
+            $claimQuery->where('municipality_id', $municipalityId);
+        }
+
+        // Get current month boundaries for "Blocked This Month"
+        $currentMonthStart = Carbon::now()->startOfMonth();
+
+        // Summary cards
+        $pendingReview = (clone $claimQuery)
+            ->where('is_flagged', true)
+            ->where('status', 'PENDING')
+            ->count();
+
+        $underInvestigation = (clone $claimQuery)
+            ->where('is_flagged', true)
+            ->where('status', 'UNDER_REVIEW')
+            ->count();
+
+        $blockedThisMonth = (clone $claimQuery)
+            ->where('is_flagged', true)
+            ->where('status', 'REJECTED')
+            ->where('rejected_at', '>=', $currentMonthStart)
+            ->count();
+
+        // Get detailed fraud alerts with priority ordering
+        $alerts = (clone $claimQuery)
+            ->where('is_flagged', true)
+            ->whereIn('status', ['PENDING', 'UNDER_REVIEW'])
+            ->with(['beneficiary', 'municipality'])
+            ->orderByRaw("FIELD(status, 'PENDING', 'UNDER_REVIEW')")
+            ->orderByRaw("JSON_EXTRACT(risk_assessment, '$.risk_level') = 'HIGH' DESC")
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(function ($claim) {
+                $riskLevel = $claim->risk_assessment['risk_level'] ?? 'MEDIUM';
+
+                // Generate alert type based on flag reason
+                $alertType = 'Unknown';
+                $alertCode = 'ALT-' . str_pad((string) $claim->id, 3, '0', STR_PAD_LEFT);
+
+                if (str_contains($claim->flag_reason ?? '', 'DUPLICATE') ||
+                    str_contains($claim->flag_reason ?? '', 'SAME TYPE')) {
+                    $alertType = 'Duplicate Claim';
+                } elseif (str_contains($claim->flag_reason ?? '', 'HIGH FREQUENCY') ||
+                          str_contains($claim->flag_reason ?? '', 'Multiple claims')) {
+                    $alertType = 'Multiple Claims';
+                } elseif (str_contains($claim->flag_reason ?? '', 'IDENTITY') ||
+                          str_contains($claim->flag_reason ?? '', 'mismatch')) {
+                    $alertType = 'Identity Mismatch';
+                }
+
+                return [
+                    'id' => $claim->id,
+                    'alert_code' => $alertCode,
+                    'alert_type' => $alertType,
+                    'severity' => $riskLevel,
+                    'status' => $claim->status,
+                    'description' => $claim->flag_reason,
+                    'beneficiary' => [
+                        'id' => $claim->beneficiary->id,
+                        'name' => $claim->beneficiary->full_name,
+                    ],
+                    'municipality' => $claim->municipality->name,
+                    'amount' => (float) $claim->amount,
+                    'assistance_type' => $claim->assistance_type,
+                    'created_at' => $claim->created_at->toIso8601String(),
+                    'risk_assessment' => $claim->risk_assessment,
+                ];
+            });
+
+        return response()->json([
+            'summary' => [
+                'pending_review' => $pendingReview,
+                'under_investigation' => $underInvestigation,
+                'blocked_this_month' => $blockedThisMonth,
+            ],
+            'alerts' => $alerts,
+        ]);
+    }
+
+    /**
      * Calculate percentage change between two values.
      * Returns positive for increase, negative for decrease.
      */

@@ -147,6 +147,71 @@ class FraudDetectionService
     }
 
     /**
+     * Check for duplicate beneficiaries using the Hybrid Search Strategy.
+     * Used by fraud alert detail page to show matched results.
+     *
+     * @return array
+     */
+    public function checkDuplicates(
+        string $firstName,
+        string $lastName,
+        string $birthdate,
+        ?int $excludeBeneficiaryId = null
+    ): array {
+        // Use phonetic search to find potential matches
+        $potentialMatches = $this->beneficiaryRepository->searchByPhonetic(
+            $firstName,
+            $lastName,
+            $birthdate
+        );
+
+        // Exclude the current beneficiary if specified
+        if ($excludeBeneficiaryId) {
+            $potentialMatches = $potentialMatches->filter(
+                fn($b) => $b->id !== $excludeBeneficiaryId
+            );
+        }
+
+        // Calculate similarity scores using Levenshtein distance
+        $matches = [];
+        $searchName = strtolower(trim($firstName . ' ' . $lastName));
+
+        foreach ($potentialMatches as $beneficiary) {
+            $matchName = strtolower(trim($beneficiary->first_name . ' ' . $beneficiary->last_name));
+            $distance = levenshtein($searchName, $matchName);
+
+            // Flag as risk if distance < 3 (very similar names)
+            if ($distance < 5) {
+                $matches[] = [
+                    'beneficiary' => $beneficiary,
+                    'similarity_score' => max(0, 100 - ($distance * 10)), // Convert distance to percentage
+                    'levenshtein_distance' => $distance,
+                ];
+            }
+        }
+
+        // Sort by similarity score (highest first)
+        usort($matches, fn($a, $b) => $b['similarity_score'] <=> $a['similarity_score']);
+
+        // Determine risk level
+        $riskLevel = 'LOW';
+        if (count($matches) > 0) {
+            $highestScore = $matches[0]['similarity_score'];
+            if ($highestScore >= 90 || count($matches) >= 3) {
+                $riskLevel = 'HIGH';
+            } elseif ($highestScore >= 70 || count($matches) >= 2) {
+                $riskLevel = 'MEDIUM';
+            }
+        }
+
+        return [
+            'matches' => $matches,
+            'risk_level' => $riskLevel,
+            'total_matches' => count($matches),
+        ];
+    }
+
+    /**
      * Generate a detailed fraud risk report for a specific beneficiary.
      */
     public function generateRiskReport(int $beneficiaryId): array

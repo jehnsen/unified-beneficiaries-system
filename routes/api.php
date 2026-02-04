@@ -8,8 +8,10 @@ use App\Http\Controllers\Api\BeneficiaryController;
 use App\Http\Controllers\Api\ClaimController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DisbursementController;
+use App\Http\Controllers\Api\FraudAlertController;
 use App\Http\Controllers\Api\IntakeController;
 use App\Http\Controllers\Api\MunicipalityController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -105,6 +107,34 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('dashboard.disbursement-velocity');
         Route::get('/recent-transactions', [DashboardController::class, 'recentTransactions'])
             ->name('dashboard.recent-transactions');
+        Route::get('/fraud-alerts', [DashboardController::class, 'fraudAlerts'])
+            ->name('dashboard.fraud-alerts');
+    });
+
+    // ============================================================
+    // FRAUD ALERTS - Detailed fraud detection and investigation
+    // ============================================================
+    Route::prefix('fraud-alerts')->group(function () {
+        Route::get('/{id}', [FraudAlertController::class, 'show'])
+            ->name('fraud-alerts.show');
+        Route::post('/{id}/assign', [FraudAlertController::class, 'assign'])
+            ->name('fraud-alerts.assign');
+        Route::post('/{id}/notes', [FraudAlertController::class, 'addNote'])
+            ->name('fraud-alerts.add-note');
+    });
+
+    // ============================================================
+    // REPORTS - Generate downloadable reports
+    // ============================================================
+    Route::prefix('reports')->group(function () {
+        Route::get('/monthly-disbursement', [ReportController::class, 'monthlyDisbursement'])
+            ->name('reports.monthly-disbursement');
+        Route::get('/beneficiary-demographics', [ReportController::class, 'beneficiaryDemographics'])
+            ->name('reports.beneficiary-demographics');
+        Route::get('/fraud-detection', [ReportController::class, 'fraudDetection'])
+            ->name('reports.fraud-detection');
+        Route::get('/budget-utilization', [ReportController::class, 'budgetUtilization'])
+            ->name('reports.budget-utilization');
     });
 
     // ============================================================

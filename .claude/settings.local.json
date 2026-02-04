@@ -21,7 +21,11 @@
       "Bash(pkill:*)",
       "Bash(php artisan:*)",
       "Bash(curl:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(for endpoint in monthly-disbursement beneficiary-demographics fraud-detection budget-utilization)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)"
     ]
   }
 }
