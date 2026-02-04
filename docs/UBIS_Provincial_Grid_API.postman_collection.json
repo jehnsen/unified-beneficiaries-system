@@ -50,6 +50,950 @@
 			"description": "Public health check endpoint"
 		},
 		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set(\"api_token\", json.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"governor@ifugao.gov.ph\",\n    \"password\": \"password123\",\n    \"device_name\": \"postman\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate and get a Sanctum API token. Use seeded provincial admin credentials."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"governor@ifugao.gov.ph\",\n    \"password\": \"password123\",\n    \"device_name\": \"postman\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"Login successful\",\n    \"token\": \"1|abc123def456ghi789jkl012mno345pqr678stu901\",\n    \"user\": {\n        \"id\": 1,\n        \"name\": \"Provincial Governor\",\n        \"email\": \"governor@ifugao.gov.ph\",\n        \"role\": \"SUPER_ADMIN\",\n        \"municipality_id\": null,\n        \"municipality\": null,\n        \"is_active\": true,\n        \"created_at\": \"2026-01-01T00:00:00Z\"\n    }\n}"
+						},
+						{
+							"name": "Invalid Credentials",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"governor@ifugao.gov.ph\",\n    \"password\": \"wrongpassword\",\n    \"device_name\": \"postman\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"The provided credentials are incorrect.\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Revoke current API token."
+					},
+					"response": []
+				},
+				{
+					"name": "My Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Get authenticated user profile with municipality info."
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for login, logout, and profile retrieval using Laravel Sanctum tokens."
+		},
+		{
+			"name": "Beneficiaries",
+			"item": [
+				{
+					"name": "List Beneficiaries",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/beneficiaries?per_page=15&sort=last_name&filter[home_municipality_id]=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"beneficiaries"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15"
+								},
+								{
+									"key": "sort",
+									"value": "last_name"
+								},
+								{
+									"key": "filter[home_municipality_id]",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Paginated list with Spatie QueryBuilder filters. Supports: filter[first_name], filter[last_name], filter[home_municipality_id], filter[gender], filter[barangay], filter[is_active]. Sorts: last_name, first_name, birthdate, created_at. Include: homeMunicipality, claims."
+					},
+					"response": []
+				},
+				{
+					"name": "Show Beneficiary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/beneficiaries/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"beneficiaries",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Beneficiary ID"
+								}
+							]
+						},
+						"description": "Show single beneficiary. Cross-LGU data masking applies."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Beneficiary",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"home_municipality_id\": 1,\n    \"first_name\": \"Pedro\",\n    \"last_name\": \"Dulnuan\",\n    \"middle_name\": \"Bugan\",\n    \"birthdate\": \"1965-03-15\",\n    \"gender\": \"Male\",\n    \"contact_number\": \"09171234567\",\n    \"address\": \"Brgy. Poblacion North, Lagawe, Ifugao\",\n    \"barangay\": \"Poblacion North\",\n    \"id_type\": \"Senior Citizen ID\",\n    \"id_number\": \"SC-IFU-00001\",\n    \"skip_duplicate_check\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/beneficiaries",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"beneficiaries"
+							]
+						},
+						"description": "Create beneficiary with Golden Record enforcement. Returns 409 if duplicates found unless skip_duplicate_check is true."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Beneficiary",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"contact_number\": \"09181234567\",\n    \"address\": \"Brgy. Burnay, Lagawe, Ifugao\",\n    \"barangay\": \"Burnay\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/beneficiaries/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"beneficiaries",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Beneficiary ID"
+								}
+							]
+						},
+						"description": "Partial update. Authorization: provincial admin or own municipality admin."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Beneficiary",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/beneficiaries/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"beneficiaries",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Beneficiary ID"
+								}
+							]
+						},
+						"description": "Soft delete. Provincial admin only."
+					},
+					"response": []
+				}
+			],
+			"description": "CRUD operations for beneficiaries with Golden Record enforcement and cross-LGU data masking."
+		},
+		{
+			"name": "Municipalities",
+			"item": [
+				{
+					"name": "List Municipalities",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/municipalities?sort=name",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"municipalities"
+							],
+							"query": [
+								{
+									"key": "sort",
+									"value": "name"
+								}
+							]
+						},
+						"description": "List all 11 Ifugao municipalities with beneficiary/claim/user counts. Filters: name, code, status, is_active."
+					},
+					"response": []
+				},
+				{
+					"name": "Show Municipality",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/municipalities/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"municipalities",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Municipality ID"
+								}
+							]
+						},
+						"description": "Single municipality with aggregate counts and budget info."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Municipality",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"New Municipality\",\n    \"code\": \"IFU-NEW\",\n    \"address\": \"Municipal Hall, Poblacion\",\n    \"contact_phone\": \"(074) 382-9999\",\n    \"contact_email\": \"mswdo.new@ifugao.gov.ph\",\n    \"status\": \"ACTIVE\",\n    \"allocated_budget\": 5000000.00\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/municipalities",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"municipalities"
+							]
+						},
+						"description": "Provincial admin only."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Municipality",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"allocated_budget\": 15000000.00,\n    \"contact_email\": \"mswdo.lagawe.updated@ifugao.gov.ph\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/municipalities/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"municipalities",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Municipality ID"
+								}
+							]
+						},
+						"description": "Update municipality details. Provincial admin only."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Municipality",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/municipalities/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"municipalities",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Municipality ID"
+								}
+							]
+						},
+						"description": "Delete municipality. Provincial admin only."
+					},
+					"response": []
+				}
+			],
+			"description": "CRUD operations for municipalities (tenants) in the Provincial Grid."
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "List Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users?sort=name&filter[role]=ADMIN",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							],
+							"query": [
+								{
+									"key": "sort",
+									"value": "name"
+								},
+								{
+									"key": "filter[role]",
+									"value": "ADMIN"
+								}
+							]
+						},
+						"description": "Provincial sees all, municipal admin sees own municipality only. Filters: name, email, role, municipality_id, is_active."
+					},
+					"response": []
+				},
+				{
+					"name": "Show User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "User ID"
+								}
+							]
+						},
+						"description": "Show single user details."
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"New Encoder\",\n    \"email\": \"encoder.new@lagawe.ifugao.gov.ph\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\",\n    \"role\": \"ENCODER\",\n    \"municipality_id\": 1,\n    \"is_active\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Create a new user. Provincial admin can create for any municipality. Municipal admin can create for own municipality only."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"role\": \"REVIEWER\",\n    \"is_active\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/users/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "4",
+									"description": "User ID"
+								}
+							]
+						},
+						"description": "Update user details."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "4",
+									"description": "User ID"
+								}
+							]
+						},
+						"description": "Delete user."
+					},
+					"response": []
+				}
+			],
+			"description": "User management with tenant-scoped visibility. Provincial sees all users, municipal admin sees own municipality only."
+		},
+		{
+			"name": "Claims",
+			"item": [
+				{
+					"name": "List Claims",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/claims?per_page=15&sort=-created_at&filter[status]=DISBURSED",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"claims"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15"
+								},
+								{
+									"key": "sort",
+									"value": "-created_at"
+								},
+								{
+									"key": "filter[status]",
+									"value": "DISBURSED"
+								}
+							]
+						},
+						"description": "Paginated claims with TenantScope auto-filtering. Filters: status, assistance_type, municipality_id, beneficiary_id, is_flagged. Sorts: created_at, amount, status. Includes: beneficiary, municipality, processedBy, disbursementProofs."
+					},
+					"response": []
+				},
+				{
+					"name": "Show Claim",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/claims/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"claims",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Claim ID"
+								}
+							]
+						},
+						"description": "Full claim detail with beneficiary, municipality, proofs."
+					},
+					"response": []
+				}
+			],
+			"description": "Claims listing and detail view with tenant-scoped auto-filtering."
+		},
+		{
+			"name": "Reference Data",
+			"item": [
+				{
+					"name": "Assistance Types",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/assistance-types",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"assistance-types"
+							]
+						},
+						"description": "Returns available assistance types and claim statuses."
+					},
+					"response": [
+						{
+							"name": "Assistance Types & Statuses",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/assistance-types",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"assistance-types"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"data\": {\n        \"assistance_types\": [\n            \"Medical\",\n            \"Cash\",\n            \"Burial\",\n            \"Educational\",\n            \"Food\",\n            \"Disaster Relief\"\n        ],\n        \"claim_statuses\": [\n            \"PENDING\",\n            \"UNDER_REVIEW\",\n            \"APPROVED\",\n            \"DISBURSED\",\n            \"REJECTED\",\n            \"CANCELLED\"\n        ]\n    }\n}"
+						}
+					]
+				}
+			],
+			"description": "Reference data endpoints for dropdown values, enums, and system constants."
+		},
+		{
+			"name": "Dashboard",
+			"item": [
+				{
+					"name": "Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/dashboard/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"dashboard",
+								"summary"
+							]
+						},
+						"description": "Provincial staff gets all municipalities. Municipal staff gets scoped stats. Includes beneficiary counts, claims by status/type, budget summary."
+					},
+					"response": []
+				}
+			],
+			"description": "Dashboard summary endpoints with tenant-scoped statistics."
+		},
+		{
 			"name": "Intake Module",
 			"item": [
 				{

@@ -23,8 +23,7 @@
         "spatie/laravel-activitylog": "^4.8",
         "spatie/laravel-permission": "^6.4",
         "spatie/laravel-backup": "^9.0",
-        "spatie/laravel-query-builder": "^6.0",
-        "barryvdh/laravel-cors": "^3.0"
+        "spatie/laravel-query-builder": "^6.0"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.13",

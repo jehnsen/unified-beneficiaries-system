@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"d:\\\\xampp\\\\apache\\\\bin\\\\FE\\\\ubis\\\\database\\\\seeders\"\" 2>/dev/null || echo \"No seeders directory found \")",
+      "Bash(php artisan migrate:fresh:*)",
+      "Bash(php -v:*)",
+      "Bash(php -l:*)",
+      "Bash(where:*)",
+      "Bash(cmd //c \"php --ini\")",
+      "Bash(cd:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd //c:*)",
+      "Bash(php artisan migrate:*)",
+      "Bash(php artisan route:list:*)",
+      "Bash(php artisan tinker:*)",
+      "Bash(python:*)"
+    ]
+  }
+}

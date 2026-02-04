@@ -5,10 +5,17 @@ declare(strict_types=1);
 namespace App\Interfaces;
 
 use App\Models\Claim;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 
 interface ClaimRepositoryInterface
 {
+    /**
+     * Paginated list with Spatie QueryBuilder filtering.
+     * TenantScope applies automatically for municipal staff.
+     */
+    public function paginate(int $perPage = 15): LengthAwarePaginator;
+
     /**
      * Create a new claim.
      */

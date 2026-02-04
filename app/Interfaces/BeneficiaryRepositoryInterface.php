@@ -5,10 +5,21 @@ declare(strict_types=1);
 namespace App\Interfaces;
 
 use App\Models\Beneficiary;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 
 interface BeneficiaryRepositoryInterface
 {
+    /**
+     * Paginated list with Spatie QueryBuilder filtering.
+     */
+    public function paginate(int $perPage = 15): LengthAwarePaginator;
+
+    /**
+     * Soft delete a beneficiary.
+     */
+    public function delete(int $id): bool;
+
     /**
      * Find beneficiary by ID.
      */

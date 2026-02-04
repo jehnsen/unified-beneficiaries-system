@@ -6,8 +6,12 @@ namespace App\Providers;
 
 use App\Interfaces\BeneficiaryRepositoryInterface;
 use App\Interfaces\ClaimRepositoryInterface;
+use App\Interfaces\MunicipalityRepositoryInterface;
+use App\Interfaces\UserRepositoryInterface;
 use App\Repositories\EloquentBeneficiaryRepository;
 use App\Repositories\EloquentClaimRepository;
+use App\Repositories\EloquentMunicipalityRepository;
+use App\Repositories\EloquentUserRepository;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -33,6 +37,18 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ClaimRepositoryInterface::class,
             EloquentClaimRepository::class
+        );
+
+        // Bind Municipality Repository
+        $this->app->bind(
+            MunicipalityRepositoryInterface::class,
+            EloquentMunicipalityRepository::class
+        );
+
+        // Bind User Repository
+        $this->app->bind(
+            UserRepositoryInterface::class,
+            EloquentUserRepository::class
         );
     }
 

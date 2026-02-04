@@ -2,73 +2,30 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\AssistanceTypeController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BeneficiaryController;
+use App\Http\Controllers\Api\ClaimController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DisbursementController;
 use App\Http\Controllers\Api\IntakeController;
+use App\Http\Controllers\Api\MunicipalityController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 /**
  * Provincial UBIS API Routes
  *
- * All routes are protected by Sanctum authentication.
- * Tenant scoping is automatically applied via TenantScope.
+ * Tenant scoping is automatically applied via TenantScope on Claims.
+ * Beneficiaries are provincial assets visible to all authenticated users
+ * (with cross-LGU data masking via BeneficiaryResource).
  */
 
-Route::middleware(['auth:sanctum'])->group(function () {
+// ================================================================
+// PUBLIC ROUTES (No authentication required)
+// ================================================================
+Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
 
-    // ============================================================
-    // INTAKE MODULE - Search, Assess, and Create Claims
-    // ============================================================
-    Route::prefix('intake')->group(function () {
-
-        // Step 1: Check for duplicate beneficiaries (Golden Record enforcement)
-        Route::post('/check-duplicate', [IntakeController::class, 'checkDuplicate'])
-            ->name('intake.check-duplicate');
-
-        // Step 2: Assess fraud risk
-        Route::post('/assess-risk', [IntakeController::class, 'assessRisk'])
-            ->name('intake.assess-risk');
-
-        // Step 3: Create a new claim (with automatic fraud detection)
-        Route::post('/claims', [IntakeController::class, 'storeClaim'])
-            ->name('intake.store-claim');
-
-        // Get detailed fraud risk report for a beneficiary
-        Route::get('/beneficiaries/{id}/risk-report', [IntakeController::class, 'getRiskReport'])
-            ->name('intake.risk-report');
-
-        // Get flagged claims for review
-        Route::get('/flagged-claims', [IntakeController::class, 'getFlaggedClaims'])
-            ->name('intake.flagged-claims');
-    });
-
-    // ============================================================
-    // DISBURSEMENT MODULE - Approve, Reject, and Upload Proof
-    // ============================================================
-    Route::prefix('disbursement')->group(function () {
-
-        // Approve a claim
-        Route::post('/claims/{id}/approve', [DisbursementController::class, 'approve'])
-            ->name('disbursement.approve')
-            ->middleware('can:approve-claims'); // Add authorization policy
-
-        // Reject a claim
-        Route::post('/claims/{id}/reject', [DisbursementController::class, 'reject'])
-            ->name('disbursement.reject')
-            ->middleware('can:reject-claims'); // Add authorization policy
-
-        // Upload disbursement proof (final step - marks claim as DISBURSED)
-        Route::post('/claims/{id}/proof', [DisbursementController::class, 'uploadProof'])
-            ->name('disbursement.upload-proof');
-
-        // Get disbursement proofs for a claim
-        Route::get('/claims/{id}/proofs', [DisbursementController::class, 'getProofs'])
-            ->name('disbursement.get-proofs');
-    });
-});
-
-/**
- * Public routes (if needed for testing or health checks)
- */
 Route::get('/health', function () {
     return response()->json([
         'status' => 'ok',
@@ -77,3 +34,98 @@ Route::get('/health', function () {
         'timestamp' => now()->toIso8601String(),
     ]);
 })->name('health');
+
+// ================================================================
+// PROTECTED ROUTES (Sanctum authentication required)
+// ================================================================
+Route::middleware(['auth:sanctum'])->group(function () {
+
+    // ============================================================
+    // AUTH - Logout & Profile
+    // ============================================================
+    Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
+    Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
+
+    // ============================================================
+    // BENEFICIARIES CRUD
+    // ============================================================
+    Route::prefix('beneficiaries')->group(function () {
+        Route::get('/', [BeneficiaryController::class, 'index'])->name('beneficiaries.index');
+        Route::get('/{id}', [BeneficiaryController::class, 'show'])->name('beneficiaries.show');
+        Route::post('/', [BeneficiaryController::class, 'store'])->name('beneficiaries.store');
+        Route::put('/{id}', [BeneficiaryController::class, 'update'])->name('beneficiaries.update');
+        Route::delete('/{id}', [BeneficiaryController::class, 'destroy'])->name('beneficiaries.destroy');
+    });
+
+    // ============================================================
+    // MUNICIPALITIES CRUD
+    // ============================================================
+    Route::prefix('municipalities')->group(function () {
+        Route::get('/', [MunicipalityController::class, 'index'])->name('municipalities.index');
+        Route::get('/{id}', [MunicipalityController::class, 'show'])->name('municipalities.show');
+        Route::post('/', [MunicipalityController::class, 'store'])->name('municipalities.store');
+        Route::put('/{id}', [MunicipalityController::class, 'update'])->name('municipalities.update');
+        Route::delete('/{id}', [MunicipalityController::class, 'destroy'])->name('municipalities.destroy');
+    });
+
+    // ============================================================
+    // USERS CRUD
+    // ============================================================
+    Route::prefix('users')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('users.index');
+        Route::get('/{id}', [UserController::class, 'show'])->name('users.show');
+        Route::post('/', [UserController::class, 'store'])->name('users.store');
+        Route::put('/{id}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
+
+    // ============================================================
+    // CLAIMS (Read-only listing; write via Intake/Disbursement)
+    // ============================================================
+    Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');
+    Route::get('/claims/{id}', [ClaimController::class, 'show'])->name('claims.show');
+
+    // ============================================================
+    // REFERENCE DATA
+    // ============================================================
+    Route::get('/assistance-types', [AssistanceTypeController::class, 'index'])
+        ->name('assistance-types.index');
+
+    // ============================================================
+    // DASHBOARD
+    // ============================================================
+    Route::get('/dashboard/summary', [DashboardController::class, 'summary'])
+        ->name('dashboard.summary');
+
+    // ============================================================
+    // INTAKE MODULE - Search, Assess, and Create Claims
+    // ============================================================
+    Route::prefix('intake')->group(function () {
+        Route::post('/check-duplicate', [IntakeController::class, 'checkDuplicate'])
+            ->name('intake.check-duplicate');
+        Route::post('/assess-risk', [IntakeController::class, 'assessRisk'])
+            ->name('intake.assess-risk');
+        Route::post('/claims', [IntakeController::class, 'storeClaim'])
+            ->name('intake.store-claim');
+        Route::get('/beneficiaries/{id}/risk-report', [IntakeController::class, 'getRiskReport'])
+            ->name('intake.risk-report');
+        Route::get('/flagged-claims', [IntakeController::class, 'getFlaggedClaims'])
+            ->name('intake.flagged-claims');
+    });
+
+    // ============================================================
+    // DISBURSEMENT MODULE - Approve, Reject, and Upload Proof
+    // ============================================================
+    Route::prefix('disbursement')->group(function () {
+        Route::post('/claims/{id}/approve', [DisbursementController::class, 'approve'])
+            ->name('disbursement.approve')
+            ->middleware('can:approve-claims');
+        Route::post('/claims/{id}/reject', [DisbursementController::class, 'reject'])
+            ->name('disbursement.reject')
+            ->middleware('can:reject-claims');
+        Route::post('/claims/{id}/proof', [DisbursementController::class, 'uploadProof'])
+            ->name('disbursement.upload-proof');
+        Route::get('/claims/{id}/proofs', [DisbursementController::class, 'getProofs'])
+            ->name('disbursement.get-proofs');
+    });
+});

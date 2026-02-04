@@ -6,11 +6,34 @@ namespace App\Repositories;
 
 use App\Interfaces\ClaimRepositoryInterface;
 use App\Models\Claim;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class EloquentClaimRepository implements ClaimRepositoryInterface
 {
+    /**
+     * Paginated list with filtering. TenantScope applies automatically.
+     */
+    public function paginate(int $perPage = 15): LengthAwarePaginator
+    {
+        return QueryBuilder::for(Claim::class)
+            ->allowedFilters([
+                AllowedFilter::exact('status'),
+                AllowedFilter::exact('assistance_type'),
+                AllowedFilter::exact('municipality_id'),
+                AllowedFilter::exact('beneficiary_id'),
+                AllowedFilter::exact('is_flagged'),
+            ])
+            ->allowedSorts(['created_at', 'amount', 'status', 'assistance_type'])
+            ->allowedIncludes(['beneficiary', 'municipality', 'processedBy', 'disbursementProofs'])
+            ->defaultSort('-created_at')
+            ->with(['beneficiary.homeMunicipality', 'municipality'])
+            ->paginate($perPage);
+    }
+
     /**
      * Create a new claim.
      */

@@ -6,17 +6,49 @@ namespace App\Repositories;
 
 use App\Interfaces\BeneficiaryRepositoryInterface;
 use App\Models\Beneficiary;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class EloquentBeneficiaryRepository implements BeneficiaryRepositoryInterface
 {
+    /**
+     * Paginated list with filtering, sorting, and includes.
+     */
+    public function paginate(int $perPage = 15): LengthAwarePaginator
+    {
+        return QueryBuilder::for(Beneficiary::class)
+            ->allowedFilters([
+                AllowedFilter::partial('first_name'),
+                AllowedFilter::partial('last_name'),
+                AllowedFilter::exact('home_municipality_id'),
+                AllowedFilter::exact('gender'),
+                AllowedFilter::partial('barangay'),
+                AllowedFilter::exact('is_active'),
+            ])
+            ->allowedSorts(['last_name', 'first_name', 'birthdate', 'created_at'])
+            ->allowedIncludes(['homeMunicipality', 'claims'])
+            ->defaultSort('last_name')
+            ->with('homeMunicipality')
+            ->paginate($perPage);
+    }
+
     /**
      * Find beneficiary by ID.
      */
     public function findById(int $id): ?Beneficiary
     {
-        return Beneficiary::find($id);
+        return Beneficiary::with('homeMunicipality')->find($id);
+    }
+
+    /**
+     * Soft delete a beneficiary.
+     */
+    public function delete(int $id): bool
+    {
+        return (bool) Beneficiary::findOrFail($id)->delete();
     }
 
     /**
