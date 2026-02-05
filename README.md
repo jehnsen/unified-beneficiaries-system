@@ -14,3 +14,5 @@ GET /api/dashboard/double-dipper-leaderboard
 GET /api/dashboard/top-assistance-types
 
 TODO:
+Update API resources to expose UUIDs instead of integer IDs
+Update FraudDetectionService with UUID wrapper method
