@@ -25,7 +25,8 @@
       "Bash(for endpoint in monthly-disbursement beneficiary-demographics fraud-detection budget-utilization)",
       "Bash(do)",
       "Bash(echo:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(del \"d:\\\\xampp\\\\apache\\\\bin\\\\FE\\\\ubis\\\\add_dashboard_endpoints.py\")"
     ]
   }
 }

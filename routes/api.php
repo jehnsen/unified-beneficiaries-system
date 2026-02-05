@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Route;
  * Tenant scoping is automatically applied via TenantScope on Claims.
  * Beneficiaries are provincial assets visible to all authenticated users
  * (with cross-LGU data masking via BeneficiaryResource).
+ *
+ * UUID-based routing: All routes use UUIDs instead of integer IDs for security.
  */
 
 // ================================================================
@@ -53,10 +55,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ============================================================
     Route::prefix('beneficiaries')->group(function () {
         Route::get('/', [BeneficiaryController::class, 'index'])->name('beneficiaries.index');
-        Route::get('/{id}', [BeneficiaryController::class, 'show'])->name('beneficiaries.show');
+        Route::get('/{beneficiary:uuid}', [BeneficiaryController::class, 'show'])->name('beneficiaries.show');
         Route::post('/', [BeneficiaryController::class, 'store'])->name('beneficiaries.store');
-        Route::put('/{id}', [BeneficiaryController::class, 'update'])->name('beneficiaries.update');
-        Route::delete('/{id}', [BeneficiaryController::class, 'destroy'])->name('beneficiaries.destroy');
+        Route::put('/{beneficiary:uuid}', [BeneficiaryController::class, 'update'])->name('beneficiaries.update');
+        Route::delete('/{beneficiary:uuid}', [BeneficiaryController::class, 'destroy'])->name('beneficiaries.destroy');
     });
 
     // ============================================================
@@ -64,10 +66,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ============================================================
     Route::prefix('municipalities')->group(function () {
         Route::get('/', [MunicipalityController::class, 'index'])->name('municipalities.index');
-        Route::get('/{id}', [MunicipalityController::class, 'show'])->name('municipalities.show');
+        Route::get('/{municipality:uuid}', [MunicipalityController::class, 'show'])->name('municipalities.show');
         Route::post('/', [MunicipalityController::class, 'store'])->name('municipalities.store');
-        Route::put('/{id}', [MunicipalityController::class, 'update'])->name('municipalities.update');
-        Route::delete('/{id}', [MunicipalityController::class, 'destroy'])->name('municipalities.destroy');
+        Route::put('/{municipality:uuid}', [MunicipalityController::class, 'update'])->name('municipalities.update');
+        Route::delete('/{municipality:uuid}', [MunicipalityController::class, 'destroy'])->name('municipalities.destroy');
     });
 
     // ============================================================
@@ -75,17 +77,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ============================================================
     Route::prefix('users')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('users.index');
-        Route::get('/{id}', [UserController::class, 'show'])->name('users.show');
+        Route::get('/{user:uuid}', [UserController::class, 'show'])->name('users.show');
         Route::post('/', [UserController::class, 'store'])->name('users.store');
-        Route::put('/{id}', [UserController::class, 'update'])->name('users.update');
-        Route::delete('/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::put('/{user:uuid}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/{user:uuid}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 
     // ============================================================
     // CLAIMS (Read-only listing; write via Intake/Disbursement)
     // ============================================================
     Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');
-    Route::get('/claims/{id}', [ClaimController::class, 'show'])->name('claims.show');
+    Route::get('/claims/{claim:uuid}', [ClaimController::class, 'show'])->name('claims.show');
 
     // ============================================================
     // REFERENCE DATA
@@ -109,17 +111,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('dashboard.recent-transactions');
         Route::get('/fraud-alerts', [DashboardController::class, 'fraudAlerts'])
             ->name('dashboard.fraud-alerts');
+        Route::get('/savings-ticker', [DashboardController::class, 'savingsTicker'])
+            ->name('dashboard.savings-ticker');
+        Route::get('/double-dipper-leaderboard', [DashboardController::class, 'doubleDipperLeaderboard'])
+            ->name('dashboard.double-dipper-leaderboard');
+        Route::get('/top-assistance-types', [DashboardController::class, 'topAssistanceTypes'])
+            ->name('dashboard.top-assistance-types');
     });
 
     // ============================================================
     // FRAUD ALERTS - Detailed fraud detection and investigation
     // ============================================================
     Route::prefix('fraud-alerts')->group(function () {
-        Route::get('/{id}', [FraudAlertController::class, 'show'])
+        Route::get('/{claim:uuid}', [FraudAlertController::class, 'show'])
             ->name('fraud-alerts.show');
-        Route::post('/{id}/assign', [FraudAlertController::class, 'assign'])
+        Route::post('/{claim:uuid}/assign', [FraudAlertController::class, 'assign'])
             ->name('fraud-alerts.assign');
-        Route::post('/{id}/notes', [FraudAlertController::class, 'addNote'])
+        Route::post('/{claim:uuid}/notes', [FraudAlertController::class, 'addNote'])
             ->name('fraud-alerts.add-note');
     });
 
@@ -147,7 +155,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('intake.assess-risk');
         Route::post('/claims', [IntakeController::class, 'storeClaim'])
             ->name('intake.store-claim');
-        Route::get('/beneficiaries/{id}/risk-report', [IntakeController::class, 'getRiskReport'])
+        Route::get('/beneficiaries/{beneficiary:uuid}/risk-report', [IntakeController::class, 'getRiskReport'])
             ->name('intake.risk-report');
         Route::get('/flagged-claims', [IntakeController::class, 'getFlaggedClaims'])
             ->name('intake.flagged-claims');
@@ -157,15 +165,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // DISBURSEMENT MODULE - Approve, Reject, and Upload Proof
     // ============================================================
     Route::prefix('disbursement')->group(function () {
-        Route::post('/claims/{id}/approve', [DisbursementController::class, 'approve'])
+        Route::post('/claims/{claim:uuid}/approve', [DisbursementController::class, 'approve'])
             ->name('disbursement.approve')
             ->middleware('can:approve-claims');
-        Route::post('/claims/{id}/reject', [DisbursementController::class, 'reject'])
+        Route::post('/claims/{claim:uuid}/reject', [DisbursementController::class, 'reject'])
             ->name('disbursement.reject')
             ->middleware('can:reject-claims');
-        Route::post('/claims/{id}/proof', [DisbursementController::class, 'uploadProof'])
+        Route::post('/claims/{claim:uuid}/proof', [DisbursementController::class, 'uploadProof'])
             ->name('disbursement.upload-proof');
-        Route::get('/claims/{id}/proofs', [DisbursementController::class, 'getProofs'])
+        Route::get('/claims/{claim:uuid}/proofs', [DisbursementController::class, 'getProofs'])
             ->name('disbursement.get-proofs');
     });
 });

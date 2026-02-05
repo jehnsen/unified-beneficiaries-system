@@ -15,14 +15,14 @@ class ClaimResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->uuid,
 
             // Beneficiary info
             'beneficiary' => new BeneficiaryResource($this->whenLoaded('beneficiary')),
 
             // Municipality info
             'municipality' => [
-                'id' => $this->municipality->id,
+                'id' => $this->municipality->uuid,
                 'name' => $this->municipality->name,
                 'code' => $this->municipality->code,
             ],
@@ -42,7 +42,7 @@ class ClaimResource extends JsonResource
             // Processing info
             'processed_by' => $this->whenLoaded('processedBy', function () {
                 return [
-                    'id' => $this->processedBy->id,
+                    'id' => $this->processedBy->uuid,
                     'name' => $this->processedBy->name,
                     'role' => $this->processedBy->role,
                 ];

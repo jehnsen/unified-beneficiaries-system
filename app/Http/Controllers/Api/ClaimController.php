@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ClaimResource;
 use App\Interfaces\ClaimRepositoryInterface;
+use App\Models\Claim;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -32,17 +33,12 @@ class ClaimController extends Controller
 
     /**
      * Show a single claim with full details.
+     * Route model binding automatically injects the claim via UUID.
      */
-    public function show(int $id): JsonResponse
+    public function show(Claim $claim): JsonResponse
     {
-        $claim = $this->claimRepository->findById($id);
-
-        if (!$claim) {
-            return response()->json(['message' => 'Claim not found.'], 404);
-        }
-
-        // Municipal staff authorization is handled by TenantScope;
-        // if TenantScope filters it out, findById returns null above.
+        // Laravel automatically injects the model via UUID route binding
+        // TenantScope is automatically applied during route binding
         $claim->load(['beneficiary.homeMunicipality', 'municipality', 'processedBy', 'disbursementProofs']);
 
         return response()->json([

@@ -9,6 +9,7 @@ use App\Http\Requests\StoreMunicipalityRequest;
 use App\Http\Requests\UpdateMunicipalityRequest;
 use App\Http\Resources\MunicipalityResource;
 use App\Interfaces\MunicipalityRepositoryInterface;
+use App\Models\Municipality;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -33,15 +34,11 @@ class MunicipalityController extends Controller
 
     /**
      * Show a single municipality with aggregate counts.
+     * Route model binding automatically injects the municipality via UUID.
      */
-    public function show(int $id): JsonResponse
+    public function show(Municipality $municipality): JsonResponse
     {
-        $municipality = $this->municipalityRepository->findById($id);
-
-        if (!$municipality) {
-            return response()->json(['message' => 'Municipality not found.'], 404);
-        }
-
+        // Laravel automatically injects the model via UUID route binding
         return response()->json([
             'data' => new MunicipalityResource($municipality),
         ]);
@@ -65,15 +62,10 @@ class MunicipalityController extends Controller
      * Update a municipality.
      * Authorization handled by UpdateMunicipalityRequest.
      */
-    public function update(int $id, UpdateMunicipalityRequest $request): JsonResponse
+    public function update(Municipality $municipality, UpdateMunicipalityRequest $request): JsonResponse
     {
-        $municipality = $this->municipalityRepository->findById($id);
-
-        if (!$municipality) {
-            return response()->json(['message' => 'Municipality not found.'], 404);
-        }
-
-        $updated = $this->municipalityRepository->update($id, $request->validated());
+        // Laravel automatically injects the model via UUID route binding
+        $updated = $this->municipalityRepository->update($municipality->id, $request->validated());
 
         return response()->json([
             'data' => new MunicipalityResource($updated->loadCount(['beneficiaries', 'claims', 'users'])),
@@ -84,21 +76,16 @@ class MunicipalityController extends Controller
     /**
      * Soft delete a municipality (provincial admin only).
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Municipality $municipality): JsonResponse
     {
+        // Laravel automatically injects the model via UUID route binding
         $user = auth()->user();
 
         if (!$user->isProvincialStaff() || !$user->isAdmin()) {
             return response()->json(['message' => 'Unauthorized. Provincial admin access required.'], 403);
         }
 
-        $municipality = $this->municipalityRepository->findById($id);
-
-        if (!$municipality) {
-            return response()->json(['message' => 'Municipality not found.'], 404);
-        }
-
-        $this->municipalityRepository->delete($id);
+        $this->municipalityRepository->delete($municipality->id);
 
         return response()->json(['message' => 'Municipality deleted successfully.']);
     }

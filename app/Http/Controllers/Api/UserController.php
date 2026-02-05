@@ -9,6 +9,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Interfaces\UserRepositoryInterface;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -38,23 +39,20 @@ class UserController extends Controller
 
     /**
      * Show a single user profile.
+     * Route model binding automatically injects the user via UUID.
      */
-    public function show(int $id): JsonResponse
+    public function show(User $user): JsonResponse
     {
+        // Laravel automatically injects the model via UUID route binding
         $authUser = auth()->user();
-        $targetUser = $this->userRepository->findById($id);
-
-        if (!$targetUser) {
-            return response()->json(['message' => 'User not found.'], 404);
-        }
 
         // Municipal staff cannot view users from other municipalities
-        if ($authUser->isMunicipalStaff() && $targetUser->municipality_id !== $authUser->municipality_id) {
+        if ($authUser->isMunicipalStaff() && $user->municipality_id !== $authUser->municipality_id) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
         return response()->json([
-            'data' => new UserResource($targetUser),
+            'data' => new UserResource($user),
         ]);
     }
 
@@ -76,14 +74,9 @@ class UserController extends Controller
      * Update an existing user.
      * Authorization handled by UpdateUserRequest.
      */
-    public function update(int $id, UpdateUserRequest $request): JsonResponse
+    public function update(User $user, UpdateUserRequest $request): JsonResponse
     {
-        $targetUser = $this->userRepository->findById($id);
-
-        if (!$targetUser) {
-            return response()->json(['message' => 'User not found.'], 404);
-        }
-
+        // Laravel automatically injects the model via UUID route binding
         $validated = $request->validated();
 
         // Remove password if not provided (avoid setting null)
@@ -91,7 +84,7 @@ class UserController extends Controller
             unset($validated['password']);
         }
 
-        $updated = $this->userRepository->update($id, $validated);
+        $updated = $this->userRepository->update($user->id, $validated);
 
         return response()->json([
             'data' => new UserResource($updated),
@@ -102,30 +95,25 @@ class UserController extends Controller
     /**
      * Soft delete a user (admin only, cannot delete self).
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(User $user): JsonResponse
     {
+        // Laravel automatically injects the model via UUID route binding
         $authUser = auth()->user();
 
         if (!$authUser->isAdmin()) {
             return response()->json(['message' => 'Unauthorized. Admin access required.'], 403);
         }
 
-        if ($authUser->id === $id) {
+        if ($authUser->id === $user->id) {
             return response()->json(['message' => 'You cannot delete your own account.'], 422);
         }
 
-        $targetUser = $this->userRepository->findById($id);
-
-        if (!$targetUser) {
-            return response()->json(['message' => 'User not found.'], 404);
-        }
-
         // Municipal admin cannot delete users from other municipalities
-        if ($authUser->isMunicipalStaff() && $targetUser->municipality_id !== $authUser->municipality_id) {
+        if ($authUser->isMunicipalStaff() && $user->municipality_id !== $authUser->municipality_id) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $this->userRepository->delete($id);
+        $this->userRepository->delete($user->id);
 
         return response()->json(['message' => 'User deleted successfully.']);
     }

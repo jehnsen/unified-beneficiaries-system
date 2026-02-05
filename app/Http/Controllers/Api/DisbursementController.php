@@ -33,16 +33,16 @@ class DisbursementController extends Controller
 
     /**
      * Approve a claim.
+     * Route model binding automatically injects the claim via UUID.
      *
-     * @route POST /api/disbursement/claims/{id}/approve
+     * @route POST /api/disbursement/claims/{claim:uuid}/approve
      */
-    public function approve(int $claimId, ApprovClaimRequest $request): JsonResponse
+    public function approve(Claim $claim, ApprovClaimRequest $request): JsonResponse
     {
+        // Laravel automatically injects the model via UUID route binding
         $user = auth()->user();
 
         try {
-            $claim = Claim::findOrFail($claimId);
-
             // Authorization check (Municipal staff can only approve their own claims)
             if ($user->isMunicipalStaff() && $claim->municipality_id !== $user->municipality_id) {
                 return response()->json([
@@ -59,13 +59,13 @@ class DisbursementController extends Controller
 
             // Update claim status
             $claim = $this->claimRepository->updateStatus(
-                $claimId,
+                $claim->id,
                 'APPROVED',
                 $user->id
             );
 
             Log::info('Claim approved', [
-                'claim_id' => $claimId,
+                'claim_id' => $claim->id,
                 'approved_by' => $user->id,
             ]);
 
@@ -76,7 +76,7 @@ class DisbursementController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to approve claim', [
-                'claim_id' => $claimId,
+                'claim_id' => $claim->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -89,17 +89,17 @@ class DisbursementController extends Controller
 
     /**
      * Reject a claim.
+     * Route model binding automatically injects the claim via UUID.
      *
-     * @route POST /api/disbursement/claims/{id}/reject
+     * @route POST /api/disbursement/claims/{claim:uuid}/reject
      */
-    public function reject(int $claimId, RejectClaimRequest $request): JsonResponse
+    public function reject(Claim $claim, RejectClaimRequest $request): JsonResponse
     {
+        // Laravel automatically injects the model via UUID route binding
         $user = auth()->user();
         $validated = $request->validated();
 
         try {
-            $claim = Claim::findOrFail($claimId);
-
             // Authorization check
             if ($user->isMunicipalStaff() && $claim->municipality_id !== $user->municipality_id) {
                 return response()->json([
@@ -116,14 +116,14 @@ class DisbursementController extends Controller
 
             // Update claim status
             $claim = $this->claimRepository->updateStatus(
-                $claimId,
+                $claim->id,
                 'REJECTED',
                 $user->id,
                 $validated['rejection_reason']
             );
 
             Log::info('Claim rejected', [
-                'claim_id' => $claimId,
+                'claim_id' => $claim->id,
                 'rejected_by' => $user->id,
                 'reason' => $validated['rejection_reason'],
             ]);
@@ -135,7 +135,7 @@ class DisbursementController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to reject claim', [
-                'claim_id' => $claimId,
+                'claim_id' => $claim->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -148,21 +148,21 @@ class DisbursementController extends Controller
 
     /**
      * Upload disbursement proof and mark claim as disbursed.
+     * Route model binding automatically injects the claim via UUID.
      *
      * This is the final step in the claim lifecycle.
      * Requires: Photo, Signature, GPS coordinates.
      *
-     * @route POST /api/disbursement/claims/{id}/proof
+     * @route POST /api/disbursement/claims/{claim:uuid}/proof
      */
-    public function uploadProof(int $claimId, UploadDisbursementProofRequest $request): JsonResponse
+    public function uploadProof(Claim $claim, UploadDisbursementProofRequest $request): JsonResponse
     {
+        // Laravel automatically injects the model via UUID route binding
         $user = auth()->user();
         $validated = $request->validated();
 
         try {
             DB::beginTransaction();
-
-            $claim = Claim::findOrFail($claimId);
 
             // Authorization check
             if ($user->isMunicipalStaff() && $claim->municipality_id !== $user->municipality_id) {
@@ -187,7 +187,7 @@ class DisbursementController extends Controller
 
             // Create disbursement proof record
             $proof = DisbursementProof::create([
-                'claim_id' => $claimId,
+                'claim_id' => $claim->id,
                 'photo_url' => $photoPath,
                 'signature_url' => $signaturePath,
                 'id_photo_url' => $idPhotoPath,
@@ -201,12 +201,12 @@ class DisbursementController extends Controller
             ]);
 
             // Mark claim as disbursed
-            $claim = $this->claimRepository->markAsDisbursed($claimId, $user->id);
+            $claim = $this->claimRepository->markAsDisbursed($claim->id, $user->id);
 
             DB::commit();
 
             Log::info('Disbursement proof uploaded', [
-                'claim_id' => $claimId,
+                'claim_id' => $claim->id,
                 'proof_id' => $proof->id,
                 'disbursed_by' => $user->id,
             ]);
@@ -223,7 +223,7 @@ class DisbursementController extends Controller
             DB::rollBack();
 
             Log::error('Failed to upload disbursement proof', [
-                'claim_id' => $claimId,
+                'claim_id' => $claim->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -236,12 +236,14 @@ class DisbursementController extends Controller
 
     /**
      * Get disbursement proofs for a claim.
+     * Route model binding automatically injects the claim via UUID.
      *
-     * @route GET /api/disbursement/claims/{id}/proofs
+     * @route GET /api/disbursement/claims/{claim:uuid}/proofs
      */
-    public function getProofs(int $claimId): JsonResponse
+    public function getProofs(Claim $claim): JsonResponse
     {
-        $claim = Claim::with('disbursementProofs')->findOrFail($claimId);
+        // Laravel automatically injects the model via UUID route binding
+        $claim->load('disbursementProofs');
 
         return response()->json([
             'data' => DisbursementProofResource::collection($claim->disbursementProofs),

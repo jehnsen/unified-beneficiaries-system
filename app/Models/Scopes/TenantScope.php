@@ -28,8 +28,15 @@ class TenantScope implements Scope
     {
         $user = Auth::user();
 
+        // SECURITY: Fail securely if no user context exists.
+        // This prevents unauthorized access if auth middleware is bypassed or misconfigured.
+        if (!$user) {
+            $builder->whereRaw('1 = 0'); // Return empty result set
+            return;
+        }
+
         // Provincial Staff has global access (municipality_id is NULL)
-        if (!$user || $user->municipality_id === null) {
+        if ($user->municipality_id === null) {
             return;
         }
 

@@ -26,6 +26,21 @@ interface BeneficiaryRepositoryInterface
     public function findById(int $id): ?Beneficiary;
 
     /**
+     * Find beneficiary by UUID (public-facing identifier).
+     */
+    public function findByUuid(string $uuid): ?Beneficiary;
+
+    /**
+     * Update beneficiary by UUID.
+     */
+    public function updateByUuid(string $uuid, array $data): Beneficiary;
+
+    /**
+     * Soft delete a beneficiary by UUID.
+     */
+    public function deleteByUuid(string $uuid): bool;
+
+    /**
      * Find or create beneficiary (Golden Record pattern).
      * Prevents duplicate beneficiaries by matching existing records first.
      */

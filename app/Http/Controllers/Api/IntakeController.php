@@ -11,6 +11,7 @@ use App\Http\Resources\BeneficiaryResource;
 use App\Http\Resources\ClaimResource;
 use App\Interfaces\BeneficiaryRepositoryInterface;
 use App\Interfaces\ClaimRepositoryInterface;
+use App\Models\Beneficiary;
 use App\Services\FraudDetectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -186,12 +187,14 @@ class IntakeController extends Controller
 
     /**
      * Get detailed fraud risk report for a specific beneficiary.
+     * Route model binding automatically injects the beneficiary via UUID.
      *
-     * @route GET /api/intake/beneficiaries/{id}/risk-report
+     * @route GET /api/intake/beneficiaries/{beneficiary:uuid}/risk-report
      */
-    public function getRiskReport(int $beneficiaryId): JsonResponse
+    public function getRiskReport(Beneficiary $beneficiary): JsonResponse
     {
-        $report = $this->fraudService->generateRiskReport($beneficiaryId);
+        // Laravel automatically injects the model via UUID route binding
+        $report = $this->fraudService->generateRiskReport($beneficiary->id);
 
         if (isset($report['error'])) {
             return response()->json([

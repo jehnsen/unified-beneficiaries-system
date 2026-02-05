@@ -39,6 +39,13 @@ class EloquentUserRepository implements UserRepositoryInterface
         return User::with('municipality')->find($id);
     }
 
+    public function findByUuid(string $uuid): ?User
+    {
+        return User::with('municipality')
+            ->where('uuid', $uuid)
+            ->first();
+    }
+
     public function create(array $data): User
     {
         return User::create($data);
@@ -52,9 +59,26 @@ class EloquentUserRepository implements UserRepositoryInterface
         return $user->fresh()->load('municipality');
     }
 
+    public function updateByUuid(string $uuid, array $data): User
+    {
+        $user = User::where('uuid', $uuid)->firstOrFail();
+        $user->update($data);
+
+        return $user->fresh()->load('municipality');
+    }
+
     public function delete(int $id): bool
     {
         $user = User::findOrFail($id);
+        // Revoke all API tokens on deletion
+        $user->tokens()->delete();
+
+        return (bool) $user->delete();
+    }
+
+    public function deleteByUuid(string $uuid): bool
+    {
+        $user = User::where('uuid', $uuid)->firstOrFail();
         // Revoke all API tokens on deletion
         $user->tokens()->delete();
 

@@ -32,6 +32,13 @@ class EloquentMunicipalityRepository implements MunicipalityRepositoryInterface
         return Municipality::withCount(['beneficiaries', 'claims', 'users'])->find($id);
     }
 
+    public function findByUuid(string $uuid): ?Municipality
+    {
+        return Municipality::withCount(['beneficiaries', 'claims', 'users'])
+            ->where('uuid', $uuid)
+            ->first();
+    }
+
     public function create(array $data): Municipality
     {
         return Municipality::create($data);
@@ -45,8 +52,22 @@ class EloquentMunicipalityRepository implements MunicipalityRepositoryInterface
         return $municipality->fresh();
     }
 
+    public function updateByUuid(string $uuid, array $data): Municipality
+    {
+        $municipality = Municipality::where('uuid', $uuid)->firstOrFail();
+        $municipality->update($data);
+
+        return $municipality->fresh();
+    }
+
     public function delete(int $id): bool
     {
         return (bool) Municipality::findOrFail($id)->delete();
+    }
+
+    public function deleteByUuid(string $uuid): bool
+    {
+        $municipality = Municipality::where('uuid', $uuid)->firstOrFail();
+        return (bool) $municipality->delete();
     }
 }

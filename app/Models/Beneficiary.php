@@ -9,12 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Beneficiary extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'home_municipality_id',
         'first_name',
         'last_name',
@@ -50,6 +52,12 @@ class Beneficiary extends Model
         parent::boot();
 
         static::creating(function ($beneficiary) {
+            // Auto-generate UUID for new records
+            if (empty($beneficiary->uuid)) {
+                $beneficiary->uuid = (string) Str::uuid();
+            }
+
+            // Auto-generate phonetic hash
             if ($beneficiary->last_name && !$beneficiary->last_name_phonetic) {
                 $beneficiary->last_name_phonetic = soundex($beneficiary->last_name);
             }
@@ -114,5 +122,14 @@ class Beneficiary extends Model
     public function getAgeAttribute(): int
     {
         return $this->birthdate->age;
+    }
+
+    /**
+     * Get the route key name for Laravel route model binding.
+     * This tells Laravel to use 'uuid' instead of 'id' for route binding.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
     }
 }

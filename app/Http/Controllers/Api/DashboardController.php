@@ -469,6 +469,144 @@ class DashboardController extends Controller
     }
 
     /**
+     * Get savings ticker - total amount saved from blocked/rejected fraud claims.
+     * The "Hero Stat" showing how much money the system prevented from being paid out fraudulently.
+     */
+    public function savingsTicker(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $isProvincial = $user->isProvincialStaff();
+        $municipalityId = $user->municipality_id;
+
+        $claimQuery = Claim::withoutGlobalScopes();
+        if (!$isProvincial) {
+            $claimQuery->where('municipality_id', $municipalityId);
+        }
+
+        // Calculate total from blocked/rejected claims that were flagged for fraud
+        $totalSaved = (float) $claimQuery
+            ->where('is_flagged', true)
+            ->where('status', 'REJECTED')
+            ->sum('amount');
+
+        // Get count of blocked claims for context
+        $blockedCount = $claimQuery
+            ->where('is_flagged', true)
+            ->where('status', 'REJECTED')
+            ->count();
+
+        return response()->json([
+            'data' => [
+                'total_saved' => $totalSaved,
+                'blocked_claims_count' => $blockedCount,
+                'label' => 'Saved from Fraud Detection',
+                'description' => 'Calculated by summing up all blocked/rejected claims due to double-dipping. This proves the system paid for itself.',
+            ],
+        ]);
+    }
+
+    /**
+     * Get double dipper leaderboard - Top 5 municipalities with attempted fraud.
+     * Shows which municipalities have the highest number of fraud attempts (flagged claims).
+     */
+    public function doubleDipperLeaderboard(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $isProvincial = $user->isProvincialStaff();
+
+        // Only provincial staff can see the leaderboard across municipalities
+        if (!$isProvincial) {
+            return response()->json([
+                'message' => 'This feature is only available for provincial staff.',
+            ], 403);
+        }
+
+        // Get top 5 municipalities by fraud attempt count
+        $leaderboard = Municipality::select('municipalities.id', 'municipalities.name', 'municipalities.code')
+            ->join('claims', 'claims.municipality_id', '=', 'municipalities.id')
+            ->where('claims.is_flagged', true)
+            ->groupBy('municipalities.id', 'municipalities.name', 'municipalities.code')
+            ->selectRaw('COUNT(claims.id) as fraud_attempts')
+            ->selectRaw('SUM(CASE WHEN claims.status = "REJECTED" THEN 1 ELSE 0 END) as blocked_count')
+            ->selectRaw('SUM(claims.amount) as total_amount_flagged')
+            ->orderBy('fraud_attempts', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($municipality, $index) {
+                return [
+                    'rank' => $index + 1,
+                    'municipality' => [
+                        'id' => $municipality->id,
+                        'name' => $municipality->name,
+                        'code' => $municipality->code,
+                    ],
+                    'fraud_attempts' => (int) $municipality->fraud_attempts,
+                    'blocked_count' => (int) $municipality->blocked_count,
+                    'total_amount_flagged' => (float) $municipality->total_amount_flagged,
+                    'status' => $municipality->fraud_attempts > 10 ? 'Critical' : ($municipality->fraud_attempts > 5 ? 'Warning' : 'Normal'),
+                ];
+            });
+
+        return response()->json([
+            'data' => [
+                'leaderboard' => $leaderboard,
+                'title' => 'Top 5 Municipalities with Attempted Fraud',
+                'description' => 'Why does Municipality X have 500 fraud attempts? Call the Mayor.',
+            ],
+        ]);
+    }
+
+    /**
+     * Get top assistance types distribution.
+     * Returns data for pie chart showing percentage breakdown by assistance category.
+     * Helps in budget planning: "Sir, too many people are dying; we need more burial funds."
+     */
+    public function topAssistanceTypes(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $isProvincial = $user->isProvincialStaff();
+        $municipalityId = $user->municipality_id;
+
+        $claimQuery = Claim::withoutGlobalScopes();
+        if (!$isProvincial) {
+            $claimQuery->where('municipality_id', $municipalityId);
+        }
+
+        // Get all claims regardless of status to show demand
+        $distribution = $claimQuery
+            ->select('assistance_type', DB::raw('COUNT(*) as count'), DB::raw('SUM(amount) as total_amount'))
+            ->groupBy('assistance_type')
+            ->orderBy('count', 'desc')
+            ->get();
+
+        $totalCount = $distribution->sum('count');
+        $totalAmount = $distribution->sum('total_amount');
+
+        $categories = $distribution->map(function ($row) use ($totalCount, $totalAmount) {
+            $percentage = $totalCount > 0 ? round(($row->count / $totalCount) * 100, 1) : 0;
+            $amountPercentage = $totalAmount > 0 ? round(($row->total_amount / $totalAmount) * 100, 1) : 0;
+
+            return [
+                'assistance_type' => $row->assistance_type,
+                'count' => (int) $row->count,
+                'total_amount' => (float) $row->total_amount,
+                'percentage' => $percentage,
+                'amount_percentage' => $amountPercentage,
+                'label' => "{$row->assistance_type} ({$percentage}%)",
+            ];
+        });
+
+        return response()->json([
+            'data' => [
+                'categories' => $categories,
+                'total_claims' => $totalCount,
+                'total_amount' => (float) $totalAmount,
+                'description' => 'Pie Chart showing distribution by assistance type. Helps in budget planning.',
+            ],
+        ]);
+    }
+
+    /**
      * Calculate percentage change between two values.
      * Returns positive for increase, negative for decrease.
      */

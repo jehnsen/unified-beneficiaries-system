@@ -44,6 +44,41 @@ class EloquentBeneficiaryRepository implements BeneficiaryRepositoryInterface
     }
 
     /**
+     * Find beneficiary by UUID (public-facing identifier).
+     */
+    public function findByUuid(string $uuid): ?Beneficiary
+    {
+        return Beneficiary::with('homeMunicipality')
+            ->where('uuid', $uuid)
+            ->first();
+    }
+
+    /**
+     * Update beneficiary by UUID.
+     */
+    public function updateByUuid(string $uuid, array $data): Beneficiary
+    {
+        $beneficiary = Beneficiary::where('uuid', $uuid)->firstOrFail();
+
+        // Recalculate phonetic if last name changed
+        if (isset($data['last_name']) && $data['last_name'] !== $beneficiary->last_name) {
+            $data['last_name_phonetic'] = soundex($data['last_name']);
+        }
+
+        $beneficiary->update($data);
+        return $beneficiary->fresh('homeMunicipality');
+    }
+
+    /**
+     * Soft delete a beneficiary by UUID.
+     */
+    public function deleteByUuid(string $uuid): bool
+    {
+        $beneficiary = Beneficiary::where('uuid', $uuid)->firstOrFail();
+        return (bool) $beneficiary->delete();
+    }
+
+    /**
      * Soft delete a beneficiary.
      */
     public function delete(int $id): bool

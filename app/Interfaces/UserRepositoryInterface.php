@@ -13,9 +13,15 @@ interface UserRepositoryInterface
 
     public function findById(int $id): ?User;
 
+    public function findByUuid(string $uuid): ?User;
+
     public function create(array $data): User;
 
     public function update(int $id, array $data): User;
 
+    public function updateByUuid(string $uuid, array $data): User;
+
     public function delete(int $id): bool;
+
+    public function deleteByUuid(string $uuid): bool;
 }

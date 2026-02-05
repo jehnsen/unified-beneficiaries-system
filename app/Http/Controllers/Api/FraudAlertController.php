@@ -19,6 +19,7 @@ class FraudAlertController extends Controller
 
     /**
      * Display detailed fraud alert information.
+     * Route model binding automatically injects the claim via UUID (bypassing TenantScope for fraud alerts).
      *
      * This endpoint provides comprehensive fraud alert details including:
      * - Beneficiary information (respecting inter-LGU data masking)
@@ -27,36 +28,30 @@ class FraudAlertController extends Controller
      * - Red flags and confidence scores
      * - Activity timeline
      *
-     * @param int $id The claim ID that was flagged
+     * @param Claim $claim The flagged claim (injected via custom route binding)
      */
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, Claim $claim): JsonResponse
     {
+        // Laravel automatically injects the flagged claim via custom route binding
+        // Custom binding ensures claim is flagged and bypasses TenantScope for provincial users
         $user = $request->user();
         $isProvincial = $user->isProvincialStaff();
         $userMunicipalityId = $user->municipality_id;
 
-        // Fetch the flagged claim (bypass tenant scope for provincial staff)
-        $claimQuery = Claim::withoutGlobalScopes()
-            ->where('id', $id)
-            ->where('is_flagged', true);
-
-        // Enforce tenant scope for municipal users
-        if (!$isProvincial) {
-            $claimQuery->where('municipality_id', $userMunicipalityId);
+        // Enforce authorization for municipal users
+        if (!$isProvincial && $claim->municipality_id !== $userMunicipalityId) {
+            return response()->json([
+                'message' => 'Fraud alert not found or you do not have permission to view it.',
+            ], 403);
         }
 
-        $claim = $claimQuery->with([
+        // Load relationships
+        $claim->load([
             'beneficiary',
             'municipality',
             'disbursementProofs',
             'processedBy'
-        ])->first();
-
-        if (!$claim) {
-            return response()->json([
-                'message' => 'Fraud alert not found or you do not have permission to view it.',
-            ], 404);
-        }
+        ]);
 
         $beneficiary = $claim->beneficiary;
         $riskAssessment = $claim->risk_assessment ?? [];
@@ -241,9 +236,11 @@ class FraudAlertController extends Controller
 
     /**
      * Assign fraud alert to a specific user for investigation.
+     * Route model binding automatically injects the claim via UUID.
      */
-    public function assign(Request $request, int $id): JsonResponse
+    public function assign(Request $request, Claim $claim): JsonResponse
     {
+        // Laravel automatically injects the flagged claim via custom route binding
         $request->validate([
             'assigned_to_user_id' => 'required|exists:users,id',
         ]);
@@ -252,20 +249,11 @@ class FraudAlertController extends Controller
         $isProvincial = $user->isProvincialStaff();
         $userMunicipalityId = $user->municipality_id;
 
-        $claimQuery = Claim::withoutGlobalScopes()
-            ->where('id', $id)
-            ->where('is_flagged', true);
-
-        if (!$isProvincial) {
-            $claimQuery->where('municipality_id', $userMunicipalityId);
-        }
-
-        $claim = $claimQuery->first();
-
-        if (!$claim) {
+        // Enforce authorization for municipal users
+        if (!$isProvincial && $claim->municipality_id !== $userMunicipalityId) {
             return response()->json([
                 'message' => 'Fraud alert not found or you do not have permission to modify it.',
-            ], 404);
+            ], 403);
         }
 
         $claim->update([
@@ -285,9 +273,11 @@ class FraudAlertController extends Controller
 
     /**
      * Add investigation note to fraud alert.
+     * Route model binding automatically injects the claim via UUID.
      */
-    public function addNote(Request $request, int $id): JsonResponse
+    public function addNote(Request $request, Claim $claim): JsonResponse
     {
+        // Laravel automatically injects the flagged claim via custom route binding
         $request->validate([
             'note' => 'required|string|max:1000',
         ]);
@@ -296,20 +286,11 @@ class FraudAlertController extends Controller
         $isProvincial = $user->isProvincialStaff();
         $userMunicipalityId = $user->municipality_id;
 
-        $claimQuery = Claim::withoutGlobalScopes()
-            ->where('id', $id)
-            ->where('is_flagged', true);
-
-        if (!$isProvincial) {
-            $claimQuery->where('municipality_id', $userMunicipalityId);
-        }
-
-        $claim = $claimQuery->first();
-
-        if (!$claim) {
+        // Enforce authorization for municipal users
+        if (!$isProvincial && $claim->municipality_id !== $userMunicipalityId) {
             return response()->json([
                 'message' => 'Fraud alert not found or you do not have permission to modify it.',
-            ], 404);
+            ], 403);
         }
 
         // Append note to existing notes with timestamp and author

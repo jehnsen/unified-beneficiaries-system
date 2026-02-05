@@ -10,12 +10,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Claim extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'beneficiary_id',
         'municipality_id',
         'assistance_type',
@@ -52,6 +54,13 @@ class Claim extends Model
     protected static function boot(): void
     {
         parent::boot();
+
+        // Auto-generate UUID for new records
+        static::creating(function ($claim) {
+            if (empty($claim->uuid)) {
+                $claim->uuid = (string) Str::uuid();
+            }
+        });
 
         static::addGlobalScope(new TenantScope());
     }
@@ -118,5 +127,14 @@ class Claim extends Model
     public function isRejected(): bool
     {
         return in_array($this->status, ['REJECTED', 'CANCELLED']);
+    }
+
+    /**
+     * Get the route key name for Laravel route model binding.
+     * This tells Laravel to use 'uuid' instead of 'id' for route binding.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
     }
 }

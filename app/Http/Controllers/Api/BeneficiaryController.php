@@ -9,6 +9,7 @@ use App\Http\Requests\StoreBeneficiaryRequest;
 use App\Http\Requests\UpdateBeneficiaryRequest;
 use App\Http\Resources\BeneficiaryResource;
 use App\Interfaces\BeneficiaryRepositoryInterface;
+use App\Models\Beneficiary;
 use App\Services\FraudDetectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,15 +38,11 @@ class BeneficiaryController extends Controller
 
     /**
      * Show a single beneficiary with cross-LGU masking.
+     * Route model binding automatically injects the beneficiary via UUID.
      */
-    public function show(int $id): JsonResponse
+    public function show(Beneficiary $beneficiary): JsonResponse
     {
-        $beneficiary = $this->beneficiaryRepository->findById($id);
-
-        if (!$beneficiary) {
-            return response()->json(['message' => 'Beneficiary not found.'], 404);
-        }
-
+        // Laravel automatically injects the model via UUID route binding
         return response()->json([
             'data' => new BeneficiaryResource($beneficiary),
         ]);
@@ -90,18 +87,13 @@ class BeneficiaryController extends Controller
      * Update a beneficiary record.
      * Authorization handled by UpdateBeneficiaryRequest.
      */
-    public function update(int $id, UpdateBeneficiaryRequest $request): JsonResponse
+    public function update(Beneficiary $beneficiary, UpdateBeneficiaryRequest $request): JsonResponse
     {
-        $beneficiary = $this->beneficiaryRepository->findById($id);
-
-        if (!$beneficiary) {
-            return response()->json(['message' => 'Beneficiary not found.'], 404);
-        }
-
+        // Laravel automatically injects the model via UUID route binding
         $validated = $request->validated();
         $validated['updated_by'] = auth()->id();
 
-        $updated = $this->beneficiaryRepository->update($id, $validated);
+        $updated = $this->beneficiaryRepository->update($beneficiary->id, $validated);
 
         return response()->json([
             'data' => new BeneficiaryResource($updated->load('homeMunicipality')),
@@ -112,21 +104,16 @@ class BeneficiaryController extends Controller
     /**
      * Soft delete a beneficiary (provincial admin only).
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Beneficiary $beneficiary): JsonResponse
     {
+        // Laravel automatically injects the model via UUID route binding
         $user = auth()->user();
 
         if (!$user->isProvincialStaff() || !$user->isAdmin()) {
             return response()->json(['message' => 'Unauthorized. Provincial admin access required.'], 403);
         }
 
-        $beneficiary = $this->beneficiaryRepository->findById($id);
-
-        if (!$beneficiary) {
-            return response()->json(['message' => 'Beneficiary not found.'], 404);
-        }
-
-        $this->beneficiaryRepository->delete($id);
+        $this->beneficiaryRepository->delete($beneficiary->id);
 
         return response()->json(['message' => 'Beneficiary deleted successfully.']);
     }

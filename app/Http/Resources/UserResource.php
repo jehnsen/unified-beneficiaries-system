@@ -12,7 +12,7 @@ class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->uuid,
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role,
@@ -20,7 +20,7 @@ class UserResource extends JsonResource
             'is_provincial_staff' => $this->isProvincialStaff(),
             'municipality' => $this->when($this->municipality_id !== null, function () {
                 return [
-                    'id' => $this->municipality->id,
+                    'id' => $this->municipality->uuid,
                     'name' => $this->municipality->name,
                     'code' => $this->municipality->code,
                 ];

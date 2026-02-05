@@ -27,6 +27,11 @@ interface ClaimRepositoryInterface
     public function findById(int $id): ?Claim;
 
     /**
+     * Find claim by UUID (public-facing identifier).
+     */
+    public function findByUuid(string $uuid): ?Claim;
+
+    /**
      * Get recent claims for a beneficiary across ALL municipalities.
      * Critical for fraud detection - checks if the same person received assistance recently.
      *

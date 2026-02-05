@@ -51,6 +51,16 @@ class EloquentClaimRepository implements ClaimRepositoryInterface
     }
 
     /**
+     * Find claim by UUID (public-facing identifier).
+     */
+    public function findByUuid(string $uuid): ?Claim
+    {
+        return Claim::with(['beneficiary', 'municipality', 'processedBy'])
+            ->where('uuid', $uuid)
+            ->first();
+    }
+
+    /**
      * Get recent claims for a beneficiary across ALL municipalities.
      * Critical for fraud detection - ignores tenant scope.
      */

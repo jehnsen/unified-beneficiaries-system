@@ -23,7 +23,7 @@ class BeneficiaryResource extends JsonResource
             || $this->home_municipality_id === $user->municipality_id;
 
         return [
-            'id' => $this->id,
+            'id' => $this->uuid,
             'full_name' => $this->full_name,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
@@ -42,7 +42,7 @@ class BeneficiaryResource extends JsonResource
 
             // Municipality info
             'home_municipality' => [
-                'id' => $this->homeMunicipality->id,
+                'id' => $this->homeMunicipality->uuid,
                 'name' => $this->homeMunicipality->name,
                 'code' => $this->homeMunicipality->code,
             ],

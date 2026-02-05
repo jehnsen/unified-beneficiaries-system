@@ -17,7 +17,7 @@ class DisbursementProofResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'claim_id' => $this->claim_id,
+            'claim_id' => $this->whenLoaded('claim', fn() => $this->claim->uuid, $this->claim_id),
 
             // Document URLs (full public URLs)
             'photo_url' => Storage::url($this->photo_url),
@@ -37,7 +37,7 @@ class DisbursementProofResource extends JsonResource
             'captured_at' => $this->captured_at->toIso8601String(),
             'captured_by' => $this->whenLoaded('capturedBy', function () {
                 return [
-                    'id' => $this->capturedBy->id,
+                    'id' => $this->capturedBy->uuid,
                     'name' => $this->capturedBy->name,
                 ];
             }),
