@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 /**
@@ -214,6 +215,7 @@ class BeneficiarySeeder extends Seeder
                 $idType = $this->pickIdType($age);
 
                 $allBeneficiaries[] = [
+                    'uuid'                 => Str::uuid()->toString(),
                     'home_municipality_id' => $municipality->id,
                     'first_name'           => $firstName,
                     'last_name'            => $lastName,

@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 /**
@@ -53,6 +54,7 @@ class UserSeeder extends Seeder
 
         foreach ($provincialUsers as $user) {
             DB::table('users')->insert(array_merge($user, [
+                'uuid'           => Str::uuid()->toString(),
                 'remember_token' => null,
                 'created_at'     => $now,
                 'updated_at'     => $now,
@@ -90,6 +92,7 @@ class UserSeeder extends Seeder
                 $munSlug = strtolower(str_replace(' ', '', $municipality->name));
 
                 DB::table('users')->insert([
+                    'uuid'               => Str::uuid()->toString(),
                     'municipality_id'    => $municipality->id,
                     'name'               => $name,
                     'email'              => "{$emailSlug}@{$munSlug}.ifugao.gov.ph",

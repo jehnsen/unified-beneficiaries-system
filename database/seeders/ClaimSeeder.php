@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 /**
@@ -375,6 +376,7 @@ class ClaimSeeder extends Seeder
             $middleName = $middleNames[array_rand($middleNames)];
 
             $realBeneficiaryId = DB::table('beneficiaries')->insertGetId([
+                'uuid'                 => Str::uuid()->toString(),
                 'home_municipality_id' => $munA,
                 'first_name'           => $realName,
                 'last_name'            => $lastName,
@@ -402,6 +404,7 @@ class ClaimSeeder extends Seeder
             $munB = $otherMunIds[array_rand($otherMunIds)];
 
             $fakeBeneficiaryId = DB::table('beneficiaries')->insertGetId([
+                'uuid'                 => Str::uuid()->toString(),
                 'home_municipality_id' => $munB,
                 'first_name'           => $fakeName,
                 'last_name'            => $lastName,
@@ -526,6 +529,7 @@ class ClaimSeeder extends Seeder
         }
 
         return [
+            'uuid'                 => Str::uuid()->toString(),
             'beneficiary_id'       => $beneficiaryId,
             'municipality_id'      => $municipalityId,
             'assistance_type'      => $type,

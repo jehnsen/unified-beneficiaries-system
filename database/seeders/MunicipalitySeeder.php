@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 /**
@@ -144,6 +145,7 @@ class MunicipalitySeeder extends Seeder
 
         foreach ($municipalities as $municipality) {
             DB::table('municipalities')->insert(array_merge($municipality, [
+                'uuid'       => Str::uuid()->toString(),
                 'logo_path'  => null,
                 'created_at' => $now,
                 'updated_at' => $now,

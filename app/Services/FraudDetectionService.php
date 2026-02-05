@@ -212,6 +212,24 @@ class FraudDetectionService
     }
 
     /**
+     * UUID wrapper: Check for duplicate beneficiaries by UUID exclusion.
+     */
+    public function checkDuplicatesByUuid(
+        string $firstName,
+        string $lastName,
+        string $birthdate,
+        ?string $excludeBeneficiaryUuid = null
+    ): array {
+        $excludeId = null;
+        if ($excludeBeneficiaryUuid) {
+            $excludeBeneficiary = Beneficiary::where('uuid', $excludeBeneficiaryUuid)->first();
+            $excludeId = $excludeBeneficiary?->id;
+        }
+
+        return $this->checkDuplicates($firstName, $lastName, $birthdate, $excludeId);
+    }
+
+    /**
      * Generate a detailed fraud risk report for a specific beneficiary.
      */
     public function generateRiskReport(int $beneficiaryId): array
@@ -233,7 +251,7 @@ class FraudDetectionService
 
         return [
             'beneficiary' => [
-                'id' => $beneficiary->id,
+                'id' => $beneficiary->uuid,
                 'name' => $beneficiary->first_name . ' ' . $beneficiary->last_name,
                 'birthdate' => $beneficiary->birthdate,
                 'home_municipality' => $beneficiary->homeMunicipality->name ?? 'Unknown',
@@ -251,7 +269,7 @@ class FraudDetectionService
             ],
             'recent_claims' => $claims->map(function ($claim) {
                 return [
-                    'id' => $claim->id,
+                    'id' => $claim->uuid,
                     'municipality' => $claim->municipality->name ?? 'Unknown',
                     'assistance_type' => $claim->assistance_type,
                     'amount' => $claim->amount,
@@ -261,6 +279,20 @@ class FraudDetectionService
                 ];
             })->toArray(),
         ];
+    }
+
+    /**
+     * UUID wrapper: Generate a detailed fraud risk report for a specific beneficiary by UUID.
+     */
+    public function generateRiskReportByUuid(string $uuid): array
+    {
+        $beneficiary = Beneficiary::where('uuid', $uuid)->first();
+
+        if (!$beneficiary) {
+            return ['error' => 'Beneficiary not found'];
+        }
+
+        return $this->generateRiskReport($beneficiary->id);
     }
 }
 
