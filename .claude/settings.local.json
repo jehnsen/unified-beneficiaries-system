@@ -29,7 +29,11 @@
       "Bash(del \"d:\\\\xampp\\\\apache\\\\bin\\\\FE\\\\ubis\\\\add_dashboard_endpoints.py\")",
       "Bash(grep:*)",
       "Bash(php:*)",
-      "Bash(mysql:*)"
+      "Bash(mysql:*)",
+      "Bash(test:*)",
+      "Bash(composer require:*)",
+      "Bash(C:Users252164.JEnrique.configherd-litebincomposer.bat require laravel/scout)",
+      "Bash(\"C:\\\\Users\\\\252164.JEnrique\\\\.config\\\\herd-lite\\\\bin\\\\composer.bat\" require laravel/scout)"
     ]
   }
 }

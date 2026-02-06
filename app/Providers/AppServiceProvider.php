@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Define authorization gate for system settings management
+        // Only Provincial Staff with Admin role can manage settings
+        Gate::define('manage-settings', function (User $user) {
+            return $user->isProvincialStaff() && $user->isAdmin();
+        });
     }
 }

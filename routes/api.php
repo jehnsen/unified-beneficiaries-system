@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\FraudAlertController;
 use App\Http\Controllers\Api\IntakeController;
 use App\Http\Controllers\Api\MunicipalityController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -184,4 +185,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/claims/{claim:uuid}/proofs', [DisbursementController::class, 'getProofs'])
             ->name('disbursement.get-proofs');
     });
+
+    // ============================================================
+    // ADMIN - System Settings (Provincial Staff Only)
+    // ============================================================
+    Route::prefix('admin/settings')
+        ->middleware('can:manage-settings')
+        ->group(function () {
+            Route::get('/', [SettingsController::class, 'index'])
+                ->name('admin.settings.index');
+            Route::get('/{setting:uuid}', [SettingsController::class, 'show'])
+                ->name('admin.settings.show');
+            Route::put('/{setting:uuid}', [SettingsController::class, 'update'])
+                ->name('admin.settings.update');
+        });
 });

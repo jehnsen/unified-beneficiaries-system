@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             MunicipalitySeeder::class,
             UserSeeder::class,
+            SystemSettingSeeder::class,
             BeneficiarySeeder::class,
             ClaimSeeder::class,
             DisbursementProofSeeder::class,

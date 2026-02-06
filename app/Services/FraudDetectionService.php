@@ -12,14 +12,11 @@ use Illuminate\Support\Collection;
 
 class FraudDetectionService
 {
-    private const RISK_THRESHOLD_DAYS = 90;
-    private const SAME_TYPE_THRESHOLD_DAYS = 30;
-    private const HIGH_FREQUENCY_THRESHOLD = 3; // More than 3 claims in 90 days = suspicious
-
     public function __construct(
         private readonly BeneficiaryRepositoryInterface $beneficiaryRepository,
         private readonly ClaimRepositoryInterface $claimRepository,
-        private readonly VerifiedDistinctPairRepositoryInterface $verifiedPairRepository
+        private readonly VerifiedDistinctPairRepositoryInterface $verifiedPairRepository,
+        private readonly ConfigurationService $configService
     ) {
     }
 
@@ -89,7 +86,7 @@ class FraudDetectionService
         foreach ($potentialMatches as $beneficiary) {
             $recentClaims = $this->claimRepository->getRecentClaimsForBeneficiary(
                 $beneficiary->id,
-                self::RISK_THRESHOLD_DAYS,
+                $this->configService->getInt('RISK_THRESHOLD_DAYS', 90),
                 null // Check all assistance types
             );
 
@@ -106,7 +103,7 @@ class FraudDetectionService
                 if ($assistanceType) {
                     $sameTypeClaims = $recentClaims
                         ->where('assistance_type', $assistanceType)
-                        ->filter(fn($claim) => $claim->created_at->gte(now()->subDays(self::SAME_TYPE_THRESHOLD_DAYS)));
+                        ->filter(fn($claim) => $claim->created_at->gte(now()->subDays($this->configService->getInt('SAME_TYPE_THRESHOLD_DAYS', 30))));
 
                     if ($sameTypeClaims->isNotEmpty()) {
                         $lastClaim = $sameTypeClaims->first();
@@ -118,8 +115,8 @@ class FraudDetectionService
                 }
 
                 // Risk Flag 3: High frequency of claims
-                if ($recentClaims->count() >= self::HIGH_FREQUENCY_THRESHOLD) {
-                    $riskFlags[] = "High frequency: {$recentClaims->count()} claims in the last 90 days";
+                if ($recentClaims->count() >= $this->configService->getInt('HIGH_FREQUENCY_THRESHOLD', 3)) {
+                    $riskFlags[] = "High frequency: {$recentClaims->count()} claims in the last {$this->configService->getInt('RISK_THRESHOLD_DAYS', 90)} days";
                 }
             }
         }
@@ -289,7 +286,7 @@ class FraudDetectionService
 
         $claims = $this->claimRepository->getRecentClaimsForBeneficiary(
             $beneficiaryId,
-            self::RISK_THRESHOLD_DAYS
+            $this->configService->getInt('RISK_THRESHOLD_DAYS', 90)
         );
 
         $municipalities = $claims->pluck('municipality.name')->unique()->values()->toArray();

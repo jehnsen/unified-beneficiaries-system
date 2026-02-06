@@ -15,14 +15,15 @@
     "require": {
         "php": "^8.2",
         "guzzlehttp/guzzle": "^7.8",
+        "intervention/image": "^3.5",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
+        "laravel/scout": "^10.23",
         "laravel/tinker": "^2.9",
-        "intervention/image": "^3.5",
         "maatwebsite/excel": "^3.1",
         "spatie/laravel-activitylog": "^4.8",
-        "spatie/laravel-permission": "^6.4",
         "spatie/laravel-backup": "^9.0",
+        "spatie/laravel-permission": "^6.4",
         "spatie/laravel-query-builder": "^6.0"
     },
     "require-dev": {
