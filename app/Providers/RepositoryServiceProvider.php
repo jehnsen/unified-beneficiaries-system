@@ -8,10 +8,12 @@ use App\Interfaces\BeneficiaryRepositoryInterface;
 use App\Interfaces\ClaimRepositoryInterface;
 use App\Interfaces\MunicipalityRepositoryInterface;
 use App\Interfaces\UserRepositoryInterface;
+use App\Interfaces\VerifiedDistinctPairRepositoryInterface;
 use App\Repositories\EloquentBeneficiaryRepository;
 use App\Repositories\EloquentClaimRepository;
 use App\Repositories\EloquentMunicipalityRepository;
 use App\Repositories\EloquentUserRepository;
+use App\Repositories\EloquentVerifiedDistinctPairRepository;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -49,6 +51,12 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             UserRepositoryInterface::class,
             EloquentUserRepository::class
+        );
+
+        // Bind VerifiedDistinctPair Repository
+        $this->app->bind(
+            VerifiedDistinctPairRepositoryInterface::class,
+            EloquentVerifiedDistinctPairRepository::class
         );
     }
 

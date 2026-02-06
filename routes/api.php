@@ -159,6 +159,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->name('intake.risk-report');
         Route::get('/flagged-claims', [IntakeController::class, 'getFlaggedClaims'])
             ->name('intake.flagged-claims');
+
+        // Whitelist management routes (False Positive Handler)
+        Route::post('/whitelist-pair', [IntakeController::class, 'whitelistPair'])
+            ->name('intake.whitelist-pair');
+        Route::delete('/whitelist-pair/{pair:uuid}', [IntakeController::class, 'revokePair'])
+            ->name('intake.revoke-pair');
+        Route::get('/verified-pairs', [IntakeController::class, 'getVerifiedPairs'])
+            ->name('intake.verified-pairs');
     });
 
     // ============================================================

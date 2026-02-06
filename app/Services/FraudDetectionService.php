@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Interfaces\BeneficiaryRepositoryInterface;
 use App\Interfaces\ClaimRepositoryInterface;
+use App\Interfaces\VerifiedDistinctPairRepositoryInterface;
 use App\Models\Beneficiary;
 use Illuminate\Support\Collection;
 
@@ -17,7 +18,8 @@ class FraudDetectionService
 
     public function __construct(
         private readonly BeneficiaryRepositoryInterface $beneficiaryRepository,
-        private readonly ClaimRepositoryInterface $claimRepository
+        private readonly ClaimRepositoryInterface $claimRepository,
+        private readonly VerifiedDistinctPairRepositoryInterface $verifiedPairRepository
     ) {
     }
 
@@ -56,6 +58,28 @@ class FraudDetectionService
                 riskLevel: 'LOW',
                 details: 'No matching beneficiaries found in the Provincial Grid.'
             );
+        }
+
+        // Filter out whitelisted pairs if the target beneficiary exists
+        // This prevents repeatedly flagging verified distinct beneficiaries
+        $targetBeneficiary = Beneficiary::where('first_name', $firstName)
+            ->where('last_name', $lastName)
+            ->where('birthdate', $birthdate)
+            ->first();
+
+        if ($targetBeneficiary) {
+            $potentialMatches = $potentialMatches->filter(function ($match) use ($targetBeneficiary) {
+                return !$this->isWhitelisted($targetBeneficiary->id, $match->id);
+            });
+
+            // Re-check if matches are empty after filtering
+            if ($potentialMatches->isEmpty()) {
+                return new RiskAssessmentResult(
+                    isRisky: false,
+                    riskLevel: 'LOW',
+                    details: 'No matching beneficiaries found in the Provincial Grid (whitelisted pairs excluded).'
+                );
+            }
         }
 
         // Step 2: For each match, check their claim history across ALL municipalities
@@ -131,6 +155,24 @@ class FraudDetectionService
     }
 
     /**
+     * Check if a pair of beneficiaries is whitelisted (verified as distinct).
+     *
+     * This prevents the fraud detection system from repeatedly flagging
+     * beneficiaries that have been manually verified as different people.
+     *
+     * @param int $beneficiaryAId First beneficiary ID
+     * @param int $beneficiaryBId Second beneficiary ID
+     * @return bool True if whitelisted (verified distinct)
+     */
+    private function isWhitelisted(int $beneficiaryAId, int $beneficiaryBId): bool
+    {
+        $pair = $this->verifiedPairRepository->findPair($beneficiaryAId, $beneficiaryBId);
+
+        // Only skip fraud detection if pair is explicitly marked as VERIFIED_DISTINCT
+        return $pair && $pair->verification_status === 'VERIFIED_DISTINCT';
+    }
+
+    /**
      * Perform a comprehensive duplicate check before creating a new beneficiary.
      * This enforces the "Golden Record" principle - never create duplicates.
      */
@@ -177,6 +219,11 @@ class FraudDetectionService
         $searchName = strtolower(trim($firstName . ' ' . $lastName));
 
         foreach ($potentialMatches as $beneficiary) {
+            // Skip if this pair is whitelisted as distinct
+            if ($excludeBeneficiaryId && $this->isWhitelisted($excludeBeneficiaryId, $beneficiary->id)) {
+                continue;
+            }
+
             $matchName = strtolower(trim($beneficiary->first_name . ' ' . $beneficiary->last_name));
             $distance = levenshtein($searchName, $matchName);
 

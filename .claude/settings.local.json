@@ -28,7 +28,8 @@
       "Bash(done)",
       "Bash(del \"d:\\\\xampp\\\\apache\\\\bin\\\\FE\\\\ubis\\\\add_dashboard_endpoints.py\")",
       "Bash(grep:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(mysql:*)"
     ]
   }
 }

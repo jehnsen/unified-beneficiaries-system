@@ -997,9 +997,132 @@
                         "description": "Generate comprehensive risk report for a beneficiary.\n\n**Authentication**: Required\n\n**Route Parameter**: `beneficiary` - Beneficiary UUID\n\n**Response**: Detailed risk profile including:\n- Total claims across all municipalities\n- Claim frequency patterns\n- Double-dipping incidents\n- Inter-LGU claim distribution\n- Risk trend analysis\n- Flagged claim history"
                     },
                     "response": []
+                },
+                {
+                    "name": "Whitelist Pair (False Positive Handler)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"beneficiary_a_uuid\": \"9d4e8f2a-1234-5678-90ab-cdef12345678\",\n    \"beneficiary_b_uuid\": \"9d4e8f2a-5678-1234-90ab-cdef87654321\",\n    \"verification_status\": \"VERIFIED_DISTINCT\",\n    \"verification_reason\": \"Verified via PhilSys ID - confirmed as different people with similar names\",\n    \"notes\": \"Juan Cruz (ID: PSN-1234567890) and Juan Kruz (ID: PSN-0987654321) are distinct individuals\",\n    \"similarity_score\": 85,\n    \"levenshtein_distance\": 2\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/intake/whitelist-pair",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "intake",
+                                "whitelist-pair"
+                            ]
+                        },
+                        "description": "Whitelist a pair of beneficiaries as verified distinct or duplicate.\n\n**Feature**: False Positive Handler - Prevents repeatedly flagging verified pairs\n\n**Authentication**: Required\n\n**Authorization**:\n- Provincial staff: Can whitelist ANY pair\n- Municipal staff: Can only whitelist if AT LEAST ONE beneficiary is from their municipality\n\n**Request Body**:\n- `beneficiary_a_uuid`: First beneficiary UUID (required)\n- `beneficiary_b_uuid`: Second beneficiary UUID (required, must be different from A)\n- `verification_status`: Status (required) - \"VERIFIED_DISTINCT\" or \"VERIFIED_DUPLICATE\"\n- `verification_reason`: Detailed reason (required, min 10 chars)\n- `notes`: Additional notes (optional)\n- `similarity_score`: Similarity score from fraud detection (optional, 0-100)\n- `levenshtein_distance`: Levenshtein distance (optional)\n\n**Use Cases**:\n- **VERIFIED_DISTINCT**: Mark phonetically similar names as different people (e.g., \"Juan Cruz\" vs \"Juan Kruz\")\n- **VERIFIED_DUPLICATE**: Confirm they are actually the same person\n\n**Effect**: Pairs marked as VERIFIED_DISTINCT will be excluded from future fraud detection\n\n**Response**: Created pair with verification details and timestamps"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Verified Pairs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/intake/verified-pairs?per_page=15&status=VERIFIED_DISTINCT",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "intake",
+                                "verified-pairs"
+                            ],
+                            "query": [
+                                {
+                                    "key": "per_page",
+                                    "value": "15",
+                                    "description": "Results per page (default: 15)"
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "VERIFIED_DISTINCT",
+                                    "description": "Filter by status: VERIFIED_DISTINCT, VERIFIED_DUPLICATE, UNDER_REVIEW, REVOKED"
+                                }
+                            ]
+                        },
+                        "description": "Get paginated list of verified beneficiary pairs.\n\n**Authentication**: Required\n\n**Scoping**:\n- Provincial users: See ALL verified pairs\n- Municipal users: See only pairs involving their municipality\n\n**Query Parameters**:\n- `per_page`: Results per page (optional, default: 15)\n- `status`: Filter by verification status (optional)\n\n**Response**: Paginated list with:\n- Pair ID (UUID)\n- Both beneficiaries (name, municipality)\n- Verification status\n- Similarity metrics\n- Verification metadata (who, when, why)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Revoke Verified Pair",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"revocation_reason\": \"New evidence shows these are actually the same person - PhilSys records merged\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/intake/whitelist-pair/:pair",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "intake",
+                                "whitelist-pair",
+                                ":pair"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "pair",
+                                    "value": "9d4e8f2a-1234-5678-90ab-cdef12345678",
+                                    "description": "Verified Pair UUID"
+                                }
+                            ]
+                        },
+                        "description": "Revoke a verified pair whitelist.\n\n**Authentication**: Required\n\n**Authorization**:\n- Provincial staff: Can revoke ANY pair\n- Municipal staff: Can only revoke pairs involving their municipality\n\n**Route Parameter**: `pair` - Verified pair UUID\n\n**Request Body**:\n- `revocation_reason`: Detailed reason for revocation (required, min 10 chars)\n\n**Effect**: Pair status changes to REVOKED and will re-enter fraud detection\n\n**Response**: Success message with revocation confirmation"
+                    },
+                    "response": []
                 }
             ],
-            "description": "Claim intake and fraud detection endpoints"
+            "description": "Claim intake and fraud detection endpoints (includes False Positive Handler for whitelisting verified pairs)"
         },
         {
             "name": "Disbursement",

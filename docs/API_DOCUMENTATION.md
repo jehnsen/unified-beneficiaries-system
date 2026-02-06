@@ -288,6 +288,206 @@ PENDING → UNDER_REVIEW → APPROVED → DISBURSED
 
 ---
 
+### 7. FALSE POSITIVE HANDLER (Whitelist Management)
+
+The False Positive Handler prevents the fraud detection system from repeatedly flagging verified distinct beneficiaries. When admins manually verify that two phonetically similar beneficiaries are actually different people, the system remembers and never flags them again.
+
+#### 7.1 Whitelist Pair
+**Endpoint:** `POST /intake/whitelist-pair`
+**Purpose:** Whitelist a pair of beneficiaries as verified distinct or duplicate.
+
+**Authorization:**
+- **Provincial Staff**: Can whitelist ANY pair
+- **Municipal Staff**: Can only whitelist if AT LEAST ONE beneficiary is from their municipality
+
+**Request Body:**
+```json
+{
+  "beneficiary_a_uuid": "9d4e8f2a-1234-5678-90ab-cdef12345678",
+  "beneficiary_b_uuid": "9d4e8f2a-5678-1234-90ab-cdef87654321",
+  "verification_status": "VERIFIED_DISTINCT",
+  "verification_reason": "Verified via PhilSys ID - confirmed as different people with similar names",
+  "notes": "Juan Cruz (ID: PSN-1234567890) and Juan Kruz (ID: PSN-0987654321) are distinct individuals",
+  "similarity_score": 85,
+  "levenshtein_distance": 2
+}
+```
+
+**Field Notes:**
+- `beneficiary_a_uuid`: First beneficiary UUID (required)
+- `beneficiary_b_uuid`: Second beneficiary UUID (required, must be different from A)
+- `verification_status`: Status (required) - `"VERIFIED_DISTINCT"` or `"VERIFIED_DUPLICATE"`
+- `verification_reason`: Detailed reason (required, min 10 characters)
+- `notes`: Additional notes (optional)
+- `similarity_score`: Similarity score from fraud detection (optional, 0-100)
+- `levenshtein_distance`: Levenshtein distance from fraud detection (optional)
+
+**Use Cases:**
+- **VERIFIED_DISTINCT**: Mark phonetically similar names as different people (e.g., "Juan Cruz" vs "Juan Kruz")
+- **VERIFIED_DUPLICATE**: Confirm they are actually the same person
+
+**Effect:** Pairs marked as `VERIFIED_DISTINCT` will be excluded from future fraud detection.
+
+**Response (Success - 201):**
+```json
+{
+  "data": {
+    "pair_id": "9d4e8f2a-9999-8888-90ab-cdef12345678",
+    "beneficiary_a": {
+      "uuid": "9d4e8f2a-1234-5678-90ab-cdef12345678",
+      "name": "Juan Dela Cruz"
+    },
+    "beneficiary_b": {
+      "uuid": "9d4e8f2a-5678-1234-90ab-cdef87654321",
+      "name": "Juan Kruz"
+    },
+    "verification_status": "VERIFIED_DISTINCT",
+    "verified_at": "2026-02-06T10:30:00Z",
+    "verified_by": "Admin User"
+  },
+  "message": "Beneficiary pair successfully verified."
+}
+```
+
+**Response (Conflict - 409):**
+```json
+{
+  "error": "This pair has already been verified.",
+  "data": {
+    "existing_status": "VERIFIED_DISTINCT",
+    "verified_at": "2026-02-05T14:20:00Z",
+    "verified_by": "Jane Doe"
+  }
+}
+```
+
+**Response (Authorization Denied - 403):**
+```json
+{
+  "error": "Authorization denied. You can only whitelist beneficiaries from your municipality."
+}
+```
+
+---
+
+#### 7.2 Get Verified Pairs
+**Endpoint:** `GET /intake/verified-pairs`
+**Purpose:** Get paginated list of verified beneficiary pairs.
+
+**Query Parameters:**
+- `per_page`: Results per page (optional, default: 15)
+- `status`: Filter by verification status (optional) - `VERIFIED_DISTINCT`, `VERIFIED_DUPLICATE`, `UNDER_REVIEW`, `REVOKED`
+
+**Scoping:**
+- **Provincial Staff**: See ALL verified pairs
+- **Municipal Staff**: See only pairs involving their municipality
+
+**Response (Success - 200):**
+```json
+{
+  "data": [
+    {
+      "pair_id": "9d4e8f2a-9999-8888-90ab-cdef12345678",
+      "beneficiary_a": {
+        "uuid": "9d4e8f2a-1234-5678-90ab-cdef12345678",
+        "name": "Juan Dela Cruz",
+        "municipality": "Lagawe"
+      },
+      "beneficiary_b": {
+        "uuid": "9d4e8f2a-5678-1234-90ab-cdef87654321",
+        "name": "Juan Kruz",
+        "municipality": "Lamut"
+      },
+      "verification_status": "VERIFIED_DISTINCT",
+      "similarity_score": 85,
+      "verified_at": "2026-02-06T10:30:00Z",
+      "verified_by": "Admin User"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total": 45,
+    "per_page": 15
+  }
+}
+```
+
+---
+
+#### 7.3 Revoke Verified Pair
+**Endpoint:** `DELETE /intake/whitelist-pair/{pair}`
+**Purpose:** Revoke a verified pair whitelist.
+
+**Route Parameter:** `pair` - Verified pair UUID
+
+**Authorization:**
+- **Provincial Staff**: Can revoke ANY pair
+- **Municipal Staff**: Can only revoke pairs involving their municipality
+
+**Request Body:**
+```json
+{
+  "revocation_reason": "New evidence shows these are actually the same person - PhilSys records merged"
+}
+```
+
+**Field Notes:**
+- `revocation_reason`: Detailed reason for revocation (required, min 10 characters)
+
+**Effect:** Pair status changes to `REVOKED` and will re-enter fraud detection.
+
+**Response (Success - 200):**
+```json
+{
+  "message": "Pair verification revoked successfully."
+}
+```
+
+**Response (Authorization Denied - 403):**
+```json
+{
+  "error": "Authorization denied."
+}
+```
+
+---
+
+### How the False Positive Handler Works
+
+**Before Implementation:**
+```
+Step 1: System flags "Juan Cruz" and "Juan Kruz" as duplicates
+Step 2: Admin reviews and confirms they are different people
+Step 3: Next claim → System flags them AGAIN ❌ (frustrating!)
+```
+
+**After Implementation:**
+```
+Step 1: System flags "Juan Cruz" and "Juan Kruz" as duplicates
+Step 2: Admin reviews and confirms they are different people
+Step 3: Admin whitelists the pair via POST /intake/whitelist-pair
+Step 4: Pair stored in verified_distinct_pairs table
+Step 5: Next claim → System SKIPS this pair ✅ (no repeated flags!)
+```
+
+**Workflow Example:**
+1. Fraud detection flags two similar beneficiaries: "Maria Santos" and "Maria Santoz"
+2. Admin investigates and confirms they have different PhilSys IDs
+3. Admin calls `POST /intake/whitelist-pair` with:
+   - `verification_status: "VERIFIED_DISTINCT"`
+   - `verification_reason: "Verified via PhilSys ID check - different individuals"`
+4. System stores the pair in the database
+5. Future fraud checks automatically exclude this pair
+6. If needed later, admin can revoke via `DELETE /intake/whitelist-pair/{pair}`
+
+**Database Design:**
+- Pairs are normalized: `beneficiary_a_id < beneficiary_b_id` (smaller ID always first)
+- This ensures (5, 10) and (10, 5) are stored as the same record
+- Bidirectional indexes enable fast lookups regardless of search order
+- Audit trail includes: similarity metrics, verification reason, who verified, when verified
+
+---
+
 ## DISBURSEMENT MODULE
 
 ### 7. Approve Claim
