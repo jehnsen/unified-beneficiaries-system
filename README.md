@@ -30,3 +30,50 @@ GET /api/dashboard/top-assistance-types
 - ✅ Created `docs/POSTMAN_COLLECTION_GUIDE.md` for quick reference
 
 **Import the collection**: See `docs/POSTMAN_COLLECTION_GUIDE.md` for instructions
+
+
+
+
+Prompt:check and analyze if this is true:
+1. The soundex() Problem (It's Too Generic)
+Soundex converts a name into a 4-character code based on how it sounds in English. It was invented in 1918.
+
+How it works: It keeps the first letter and removes vowels. Robert and Rupert both become R163.
+
+The Failure Case (Filipino/Local Context):
+
+Name 1: Jehnsen -> J525
+
+Name 2: Jensen -> J525
+
+Result: Match (Good).
+
+Name 3: Gimenez -> G552
+
+Name 4: Jimenez -> J552
+
+Result: NO MATCH (Bad).
+
+Why: Soundex relies heavily on the first letter. In the Philippines, "G" and "J" or "C" and "K" are often swapped (e.g., "Carl" vs "Karl"). Soundex will completely miss this fraud attempt because the codes start with different letters.
+
+2. The levenshtein() Problem (It's Literal, Not Logical)
+Levenshtein calculates the "Edit Distance"—how many single-character edits it takes to turn String A into String B.
+
+How it works: kitten to sitting = distance of 3.
+
+The Failure Case (Abbreviations & Addresses):
+
+Address A: 123 Gen. Luna St.
+
+Address B: 123 General Luna Street
+
+Levenshtein Distance: 10+ (Huge difference).
+
+Result: The system thinks these are different addresses.
+
+Reality: It is the exact same house. A "double-dipper" can get paid twice just by typing "Street" instead of "St."
+
+
+
+Task: If those are true, then we'll fin another alternative approach. Is it ok to use Laravel Scout. and Meilisearch?
+is Meilisearch still active and supported by coimmunity?
