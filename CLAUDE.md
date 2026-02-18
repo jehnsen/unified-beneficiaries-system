@@ -69,8 +69,17 @@ When implementing `FraudDetectionService::checkDuplicates()`:
 ### Services
 - **`FraudDetectionService`**: Core fraud detection logic with phonetic matching, Levenshtein distance calculation, whitelist filtering, and risk assessment.
     - Methods: `checkRisk()`, `checkDuplicates()`, `checkDuplicatesByUuid()`, `generateRiskReportByUuid()`, `isWhitelisted()`.
+    - Returns: `RiskAssessmentResult` DTO for risk checks.
 - **`ConfigurationService`**: Cache-first runtime configuration store with type-safe getters.
     - Methods: `get()`, `set()`, `getInt()`, `getFloat()`, `getBool()`, `getString()`, `invalidateCache()`, `flushCache()`.
+- **`DashboardService`**: Tenant-scoped dashboard analytics and reporting.
+    - Encapsulates Provincial vs Municipal data access pattern.
+    - Methods: `forUser()`, `claimQuery()`, `beneficiaryQuery()`, `getSummary()`, `getMetricsCards()`, `getAssistanceDistribution()`, `getDisbursementVelocity()`, `getRecentTransactions()`, `getFraudAlerts()`, `getSavingsTicker()`, `getDoubleDipperLeaderboard()`, `getTopAssistanceTypes()`.
+
+### DTOs (Data Transfer Objects)
+- **`RiskAssessmentResult`** (`app/DTOs/RiskAssessmentResult.php`): Value object for fraud detection results.
+    - Properties: `isRisky`, `riskLevel`, `details`, `matchingBeneficiaries`, `recentClaims`.
+    - Method: `toArray()` for JSON serialization.
 
 ### Repositories (All follow Interface-Implementation pattern)
 - **`BeneficiaryRepositoryInterface`** → `EloquentBeneficiaryRepository`
@@ -88,6 +97,7 @@ When implementing `FraudDetectionService::checkDuplicates()`:
 - **Request:** Create in `app/Http/Requests/`.
 - **Interface:** Create in `app/Interfaces/`.
 - **Service:** Create in `app/Services/`.
+- **DTO:** Create in `app/DTOs/` for value objects and data transfer objects.
 - **Repository:** Create in `app/Repositories/` and bind in `RepositoryServiceProvider`.
 - **Seeder:** Run all seeders with `php artisan db:seed` or specific with `php artisan db:seed --class=SystemSettingSeeder`.
 - **Cache Clear:** `php artisan cache:clear` or `php artisan cache:forget system_settings:*` for config cache.

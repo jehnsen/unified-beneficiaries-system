@@ -1475,7 +1475,7 @@
                                 "summary"
                             ]
                         },
-                        "description": "Get overall dashboard summary statistics.\n\n**Authentication**: Required\n\n**Scoping**: Data filtered by user's municipality (if applicable)\n\n**Response**: High-level metrics including:\n- Total beneficiaries\n- Total claims\n- Total disbursed amount\n- Pending claims\n- Flagged claims count\n- Active municipalities"
+                        "description": "Get overall dashboard summary statistics.\n\n**Authentication**: Required\n\n**Service**: `DashboardService::getSummary()`\n\n**Scoping**: Provincial users see all data; Municipal users see only their municipality's data.\n\n**Response**:\n- `beneficiaries`: Total and active counts\n- `claims`: Total, disbursed amount, flagged count, by_status, by_assistance_type\n- `budget`: Allocated, used, remaining (structure differs for Provincial vs Municipal)\n- `municipalities`: (Provincial only) List with budget and claim stats per municipality"
                     },
                     "response": []
                 },
@@ -1500,7 +1500,7 @@
                                 "metrics-cards"
                             ]
                         },
-                        "description": "Get key performance indicator cards for dashboard.\n\n**Authentication**: Required\n\n**Response**: Array of metric cards with:\n- Total Claims (with % change)\n- Total Disbursed (with % change)\n- Pending Claims\n- Fraud Detection Rate\n- Average Processing Time\n- Budget Utilization"
+                        "description": "Get key performance indicator cards for dashboard with month-over-month changes.\n\n**Authentication**: Required\n\n**Service**: `DashboardService::getMetricsCards()`\n\n**Response**:\n- `total_disbursed`: Current month amount with % change vs last month\n- `beneficiaries_served`: Unique beneficiaries with disbursed claims this month\n- `fraud_attempts_blocked`: Flagged claims this month with % change\n- `remaining_budget`: Budget remaining with percentage and total"
                     },
                     "response": []
                 },
@@ -1525,7 +1525,7 @@
                                 "fraud-alerts"
                             ]
                         },
-                        "description": "Get fraud alerts summary for dashboard widget.\n\n**Authentication**: Required\n\n**Response**: Recent fraud alerts with:\n- Alert count by severity\n- Recent flagged claims\n- Investigation status\n- Top fraud patterns"
+                        "description": "Get fraud alerts summary with actionable metrics.\n\n**Authentication**: Required\n\n**Service**: `DashboardService::getFraudAlerts()`\n\n**Response**:\n- `summary`: pending_review, under_investigation, blocked_this_month counts\n- `alerts`: List of flagged claims with:\n  - alert_code, alert_type, severity, status\n  - beneficiary info, municipality, amount\n  - risk_assessment details\n  - Priority ordered: PENDING first, HIGH severity first"
                     },
                     "response": []
                 },
@@ -1556,7 +1556,7 @@
                                 }
                             ]
                         },
-                        "description": "Get recent claim transactions for dashboard activity feed.\n\n**Authentication**: Required\n\n**Query Parameters**:\n- `limit`: Number of transactions (default: 10)\n\n**Response**: List of recent claims with beneficiary and status information"
+                        "description": "Get recent claim transactions for dashboard activity feed (last 10 claims).\n\n**Authentication**: Required\n\n**Service**: `DashboardService::getRecentTransactions()`\n\n**Response**: List of recent claims with:\n- beneficiary_name, barangay, municipality\n- assistance_type, amount, status\n- is_flagged, flag_reason, risk_assessment\n- created_at, updated_at (ISO 8601)"
                     },
                     "response": []
                 },
@@ -1581,7 +1581,7 @@
                                 "assistance-distribution"
                             ]
                         },
-                        "description": "Get assistance type distribution data for pie/donut charts.\n\n**Authentication**: Required\n\n**Response**: Breakdown of claims by assistance type:\n- Medical\n- Burial\n- Educational\n- Financial\n- Food\nWith counts and percentages"
+                        "description": "Get assistance distribution by category for horizontal bar chart.\n\n**Authentication**: Required\n\n**Service**: `DashboardService::getAssistanceDistribution()`\n\n**Response**:\n- `categories`: List with category name, amount, count (DISBURSED claims only)\n- `total_amount`: Sum of all disbursed amounts\n- `total_claims`: Count of disbursed claims"
                     },
                     "response": []
                 },
@@ -1612,7 +1612,7 @@
                                 }
                             ]
                         },
-                        "description": "Get top assistance types by claim count or amount.\n\n**Authentication**: Required\n\n**Query Parameters**:\n- `limit`: Number of top types (default: 5)\n\n**Response**: Ranked list of assistance types with claim counts and total amounts"
+                        "description": "Get top assistance types distribution for pie chart (budget planning).\n\n**Authentication**: Required\n\n**Service**: `DashboardService::getTopAssistanceTypes()`\n\n**Response**:\n- `categories`: List with assistance_type, count, total_amount, percentage, amount_percentage, label\n- `total_claims`: Total count across all types\n- `total_amount`: Total amount across all types\n- `description`: Use case hint for budget planning"
                     },
                     "response": []
                 },
@@ -1643,7 +1643,7 @@
                                 }
                             ]
                         },
-                        "description": "Get disbursement velocity (time from claim to disbursement) trends.\n\n**Authentication**: Required\n\n**Query Parameters**:\n- `period`: Time period (daily/weekly/monthly)\n\n**Response**: Time series data showing:\n- Average processing time\n- Claim volume\n- Approval rate\n- Trends over time"
+                        "description": "Get disbursement velocity (daily spending over last 7 days) for dual-axis line chart.\n\n**Authentication**: Required\n\n**Service**: `DashboardService::getDisbursementVelocity()`\n\n**Response**:\n- `daily_data`: Array with date, day_label (Mon/Tue/etc), disbursed_amount, beneficiary_count\n- `period`: 'Last 7 days'\n- `total_disbursed`: Sum for the period\n- `total_beneficiaries`: Unique count for the period"
                     },
                     "response": []
                 },
@@ -1668,7 +1668,7 @@
                                 "savings-ticker"
                             ]
                         },
-                        "description": "Get estimated savings from fraud prevention.\n\n**Authentication**: Required\n\n**Calculation**: Amount saved = Total rejected fraudulent claims\n\n**Response**:\n- Total savings (PHP)\n- Number of prevented fraudulent claims\n- Breakdown by fraud type\n- Month-over-month comparison"
+                        "description": "Get savings ticker - total amount saved from blocked/rejected fraud claims (the 'Hero Stat').\n\n**Authentication**: Required\n\n**Service**: `DashboardService::getSavingsTicker()`\n\n**Calculation**: Sum of amounts from flagged + rejected claims\n\n**Response**:\n- `total_saved`: Total PHP amount prevented from fraudulent payout\n- `blocked_claims_count`: Number of rejected flagged claims\n- `label`: 'Saved from Fraud Detection'\n- `description`: Proves ROI of the fraud detection system"
                     },
                     "response": []
                 },
@@ -1699,12 +1699,12 @@
                                 }
                             ]
                         },
-                        "description": "Get top beneficiaries with multiple claims (potential double-dippers).\n\n**Authentication**: Required\n\n**Query Parameters**:\n- `limit`: Number of beneficiaries (default: 10)\n\n**Double Dipping Definition**: Receiving same assistance type within 30 days from different municipalities\n\n**Response**: Ranked list of beneficiaries with:\n- Total claims count\n- Number of flagged claims\n- Municipalities involved\n- Total amount received\n- Risk score"
+                        "description": "Get top 5 municipalities with attempted fraud (Provincial staff only).\n\n**Authentication**: Required (Provincial staff only - returns 403 for Municipal users)\n\n**Service**: `DashboardService::getDoubleDipperLeaderboard()`\n\n**Response**:\n- `leaderboard`: Ranked list of municipalities with:\n  - rank, municipality (id, name, code)\n  - fraud_attempts, blocked_count, total_amount_flagged\n  - status: 'Critical' (>10), 'Warning' (>5), 'Normal'\n- `title`: 'Top 5 Municipalities with Attempted Fraud'\n- `description`: Actionable insight for Provincial oversight"
                     },
                     "response": []
                 }
             ],
-            "description": "Dashboard analytics and statistics endpoints"
+            "description": "Dashboard analytics and statistics endpoints.\n\n**Service Layer**: All endpoints delegate to `DashboardService` which handles tenant-scoped queries (Provincial vs Municipal data access).\n\n**Scoping Pattern**:\n- Provincial users (`municipality_id = NULL`): See aggregate data across ALL municipalities\n- Municipal users (`municipality_id = SET`): See only their municipality's data"
         },
         {
             "name": "Reports",
