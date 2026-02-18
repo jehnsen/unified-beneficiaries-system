@@ -186,7 +186,9 @@ class IntakeController extends Controller
 
             return response()->json([
                 'error' => 'Failed to create claim.',
-                'message' => $e->getMessage(),
+                // Only surface raw exception details in local/debug mode.
+                // In production this would leak SQL errors, file paths, or stack traces.
+                'message' => config('app.debug') ? $e->getMessage() : 'An internal error occurred.',
             ], 500);
         }
     }
@@ -341,7 +343,9 @@ class IntakeController extends Controller
 
             return response()->json([
                 'error' => 'Failed to verify pair.',
-                'message' => $e->getMessage(),
+                // Only surface raw exception details in local/debug mode.
+                // In production this would leak SQL errors, file paths, or stack traces.
+                'message' => config('app.debug') ? $e->getMessage() : 'An internal error occurred.',
             ], 500);
         }
     }
@@ -419,20 +423,11 @@ class IntakeController extends Controller
         $perPage = (int) $request->input('per_page', 15);
         $status = $request->input('status');
 
-        // Get paginated pairs
-        $pairs = $this->verifiedPairRepository->paginate($perPage, $status);
+        // Pass municipality_id for scoped users so filtering happens in the DB query.
+        // Post-pagination PHP filtering produced wrong total counts in the meta block.
+        $municipalityId = $user->isMunicipalStaff() ? $user->municipality_id : null;
 
-        // Filter by municipality for municipal staff
-        if ($user->isMunicipalStaff()) {
-            $pairs->getCollection()->transform(function ($pair) use ($user) {
-                // Only include pairs where at least one beneficiary is from their municipality
-                if ($pair->beneficiaryA->home_municipality_id === $user->municipality_id
-                    || $pair->beneficiaryB->home_municipality_id === $user->municipality_id) {
-                    return $pair;
-                }
-                return null;
-            })->filter(); // Remove nulls
-        }
+        $pairs = $this->verifiedPairRepository->paginate($perPage, $status, $municipalityId);
 
         return response()->json([
             'data' => $pairs->map(function ($pair) {

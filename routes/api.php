@@ -29,7 +29,11 @@ use Illuminate\Support\Facades\Route;
 // ================================================================
 // PUBLIC ROUTES (No authentication required)
 // ================================================================
-Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
+// Strict throttle on login to prevent brute-force credential stuffing.
+// 5 attempts per minute per IP; exceeding returns 429 Too Many Requests.
+Route::post('/auth/login', [AuthController::class, 'login'])
+    ->middleware('throttle:5,1')
+    ->name('auth.login');
 
 Route::get('/health', function () {
     return response()->json([
@@ -43,7 +47,9 @@ Route::get('/health', function () {
 // ================================================================
 // PROTECTED ROUTES (Sanctum authentication required)
 // ================================================================
-Route::middleware(['auth:sanctum'])->group(function () {
+// General API throttle: 60 requests/minute per user token.
+// Prevents scraping of the beneficiary index and report endpoints.
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     // ============================================================
     // AUTH - Logout & Profile

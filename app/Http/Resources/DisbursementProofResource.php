@@ -19,10 +19,13 @@ class DisbursementProofResource extends JsonResource
             'id' => $this->id,
             'claim_id' => $this->whenLoaded('claim', fn() => $this->claim->uuid, $this->claim_id),
 
-            // Document URLs (full public URLs)
-            'photo_url' => Storage::url($this->photo_url),
-            'signature_url' => Storage::url($this->signature_url),
-            'id_photo_url' => $this->id_photo_url ? Storage::url($this->id_photo_url) : null,
+            // Signed temporary URLs (15-minute expiry) for private-disk files.
+            // Prevents permanent, guessable links to biometric and ID document files.
+            'photo_url' => Storage::temporaryUrl($this->photo_url, now()->addMinutes(15)),
+            'signature_url' => Storage::temporaryUrl($this->signature_url, now()->addMinutes(15)),
+            'id_photo_url' => $this->id_photo_url
+                ? Storage::temporaryUrl($this->id_photo_url, now()->addMinutes(15))
+                : null,
             'additional_documents' => $this->additional_documents,
 
             // Geolocation

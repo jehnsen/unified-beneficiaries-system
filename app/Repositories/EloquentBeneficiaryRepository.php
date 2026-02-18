@@ -89,23 +89,33 @@ class EloquentBeneficiaryRepository implements BeneficiaryRepositoryInterface
     /**
      * Find or create beneficiary (Golden Record pattern).
      * Prevents duplicate beneficiaries by matching existing records first.
+     *
+     * Uses a transaction with a pessimistic lock to close the TOCTOU race condition.
+     * Without lockForUpdate(), two concurrent intake submissions for the same person
+     * both pass the ->first() check and race to create(), breaking the Golden Record.
+     *
+     * InnoDB gap locks — acquired by SELECT FOR UPDATE on an empty result set — prevent
+     * any concurrent transaction from inserting into the same (first_name, last_name,
+     * birthdate) key range until this transaction commits.
      */
     public function findOrCreate(array $data): Beneficiary
     {
-        // Try to find existing beneficiary by exact match
-        $existing = Beneficiary::where('first_name', $data['first_name'])
-            ->where('last_name', $data['last_name'])
-            ->where('birthdate', $data['birthdate'])
-            ->first();
+        return DB::transaction(function () use ($data) {
+            $existing = Beneficiary::where('first_name', $data['first_name'])
+                ->where('last_name', $data['last_name'])
+                ->where('birthdate', $data['birthdate'])
+                ->lockForUpdate()
+                ->first();
 
-        if ($existing) {
-            return $existing;
-        }
+            if ($existing) {
+                return $existing;
+            }
 
-        // Calculate phonetic hash for new beneficiary
-        $data['last_name_phonetic'] = soundex($data['last_name']);
+            // Calculate phonetic hash for new beneficiary
+            $data['last_name_phonetic'] = soundex($data['last_name']);
 
-        return Beneficiary::create($data);
+            return Beneficiary::create($data);
+        });
     }
 
     /**

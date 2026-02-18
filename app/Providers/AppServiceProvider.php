@@ -28,5 +28,15 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-settings', function (User $user) {
             return $user->isProvincialStaff() && $user->isAdmin();
         });
+
+        // Both Provincial and Municipal Staff can approve/reject claims.
+        // Without these definitions, the 'can:' middleware throws a 500 instead of 403.
+        Gate::define('approve-claims', function (User $user) {
+            return $user->isMunicipalStaff() || $user->isProvincialStaff();
+        });
+
+        Gate::define('reject-claims', function (User $user) {
+            return $user->isMunicipalStaff() || $user->isProvincialStaff();
+        });
     }
 }

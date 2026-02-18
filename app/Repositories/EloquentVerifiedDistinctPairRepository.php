@@ -109,14 +109,25 @@ class EloquentVerifiedDistinctPairRepository implements VerifiedDistinctPairRepo
      *
      * @param int $perPage Number of results per page
      * @param string|null $status Optional status filter
+     * @param int|null $municipalityId Scope to pairs where either beneficiary belongs to this municipality.
+     *                                 Applied as a DB-level WHERE so the paginator total is always accurate.
      * @return LengthAwarePaginator Paginated results
      */
-    public function paginate(int $perPage = 15, ?string $status = null): LengthAwarePaginator
+    public function paginate(int $perPage = 15, ?string $status = null, ?int $municipalityId = null): LengthAwarePaginator
     {
         $query = VerifiedDistinctPair::with(['beneficiaryA', 'beneficiaryB', 'verifiedBy']);
 
         if ($status) {
             $query->where('verification_status', $status);
+        }
+
+        // Filter at the query level so the paginator COUNT reflects the scoped total,
+        // not the full table. PHP-level post-pagination filtering breaks total/per_page.
+        if ($municipalityId !== null) {
+            $query->where(function ($q) use ($municipalityId) {
+                $q->whereHas('beneficiaryA', fn ($b) => $b->where('home_municipality_id', $municipalityId))
+                  ->orWhereHas('beneficiaryB', fn ($b) => $b->where('home_municipality_id', $municipalityId));
+            });
         }
 
         return $query->latest('verified_at')->paginate($perPage);

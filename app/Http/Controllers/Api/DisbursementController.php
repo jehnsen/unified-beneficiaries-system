@@ -82,7 +82,9 @@ class DisbursementController extends Controller
 
             return response()->json([
                 'error' => 'Failed to approve claim.',
-                'message' => $e->getMessage(),
+                // Only surface raw exception details in local/debug mode.
+                // In production this would leak SQL errors, file paths, or stack traces.
+                'message' => config('app.debug') ? $e->getMessage() : 'An internal error occurred.',
             ], 500);
         }
     }
@@ -141,7 +143,9 @@ class DisbursementController extends Controller
 
             return response()->json([
                 'error' => 'Failed to reject claim.',
-                'message' => $e->getMessage(),
+                // Only surface raw exception details in local/debug mode.
+                // In production this would leak SQL errors, file paths, or stack traces.
+                'message' => config('app.debug') ? $e->getMessage() : 'An internal error occurred.',
             ], 500);
         }
     }
@@ -178,11 +182,13 @@ class DisbursementController extends Controller
                 ], 422);
             }
 
-            // Upload files to storage (S3 or local)
-            $photoPath = $request->file('photo')->store('disbursement-proofs/photos', 'public');
-            $signaturePath = $request->file('signature')->store('disbursement-proofs/signatures', 'public');
+            // Upload files to the private (default) disk, NOT the public disk.
+            // These are government ID documents and biometric signatures — they must
+            // never be directly accessible via a guessable public URL.
+            $photoPath = $request->file('photo')->store('disbursement-proofs/photos');
+            $signaturePath = $request->file('signature')->store('disbursement-proofs/signatures');
             $idPhotoPath = $request->hasFile('id_photo')
-                ? $request->file('id_photo')->store('disbursement-proofs/ids', 'public')
+                ? $request->file('id_photo')->store('disbursement-proofs/ids')
                 : null;
 
             // Create disbursement proof record
@@ -229,7 +235,9 @@ class DisbursementController extends Controller
 
             return response()->json([
                 'error' => 'Failed to upload proof.',
-                'message' => $e->getMessage(),
+                // Only surface raw exception details in local/debug mode.
+                // In production this would leak SQL errors, file paths, or stack traces.
+                'message' => config('app.debug') ? $e->getMessage() : 'An internal error occurred.',
             ], 500);
         }
     }

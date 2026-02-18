@@ -61,13 +61,14 @@ interface VerifiedDistinctPairRepositoryInterface
     public function revoke(int $pairId, int $userId, string $reason): bool;
 
     /**
-     * Get paginated list of all pairs with optional status filter.
+     * Get paginated list of all pairs with optional status and municipality filter.
      *
      * @param int $perPage Number of results per page
      * @param string|null $status Optional status filter
+     * @param int|null $municipalityId Scope to pairs where either beneficiary belongs to this municipality
      * @return LengthAwarePaginator Paginated results
      */
-    public function paginate(int $perPage = 15, ?string $status = null): LengthAwarePaginator;
+    public function paginate(int $perPage = 15, ?string $status = null, ?int $municipalityId = null): LengthAwarePaginator;
 
     /**
      * Get the verification status of a pair.
