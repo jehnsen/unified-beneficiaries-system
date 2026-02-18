@@ -109,3 +109,6 @@ The Win: Allows you to set thresholds (e.g., "Auto-reject if > 95%", "Flag for r
 What it does: An Admin API to change rules on the fly (e.g., changing the "Double Dipping" window from 30 days to 15 days).
 
 The Win: You don't need to redeploy code just to change a policy setting.
+
+
+continue: Bug #10

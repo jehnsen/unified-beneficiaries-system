@@ -64,8 +64,8 @@ class FraudAlertController extends Controller
         $isSameMunicipality = $isProvincial || ($beneficiary->home_municipality_id === $userMunicipalityId);
 
         $beneficiaryInfo = [
-            'id' => $beneficiary->id,
-            'beneficiary_id' => $beneficiary->beneficiary_id,
+            'id' => $beneficiary->uuid,
+            'beneficiary_id' => $beneficiary->uuid,
             'name' => $beneficiary->full_name,
             'barangay' => $beneficiary->barangay,
             'contact' => $isSameMunicipality ? $beneficiary->contact_number : '***-***-****',
@@ -80,7 +80,7 @@ class FraudAlertController extends Controller
         // 2. CLAIM DETAILS
         // ============================================================
         $claimDetails = [
-            'claim_id' => $claim->id,
+            'claim_id' => $claim->uuid,
             'type' => $claim->assistance_type,
             'amount' => (float) $claim->amount,
             'purpose' => $claim->purpose,
@@ -122,7 +122,7 @@ class FraudAlertController extends Controller
             $matchedResults[] = [
                 'municipality' => $matchedMunicipality?->name ?? 'Unknown',
                 'municipality_code' => $matchedMunicipality?->code ?? 'N/A',
-                'beneficiary_id' => $matchedBeneficiary->beneficiary_id,
+                'beneficiary_id' => $matchedBeneficiary->uuid,
                 'name' => $matchedBeneficiary->full_name,
                 'similarity_score' => $match['similarity_score'],
                 'claim_type' => $recentClaims->first()?->assistance_type ?? 'Unknown',
@@ -184,7 +184,7 @@ class FraudAlertController extends Controller
             $timeline[] = [
                 'timestamp' => $claim->updated_at->toIso8601String(),
                 'event' => 'Alert Assigned',
-                'description' => 'Auto-assigned to ' . ($claim->processedBy?->name ?? 'Maria Cruz') . ' based on workload',
+                'description' => 'Auto-assigned to ' . ($claim->processedBy?->name ?? 'Unassigned') . ' based on workload',
                 'actor' => 'System',
             ];
         }
@@ -216,7 +216,7 @@ class FraudAlertController extends Controller
         return response()->json([
             'data' => [
                 'alert' => [
-                    'id' => $claim->id,
+                    'id' => $claim->uuid,
                     'code' => $alertCode,
                     'type' => $alertType,
                     'severity' => $riskAssessment['risk_level'] ?? 'MEDIUM',
@@ -264,7 +264,7 @@ class FraudAlertController extends Controller
         return response()->json([
             'message' => 'Fraud alert assigned successfully.',
             'data' => [
-                'claim_id' => $claim->id,
+                'claim_id' => $claim->uuid,
                 'assigned_to' => $claim->processedBy->name,
                 'status' => $claim->status,
             ],
@@ -305,7 +305,7 @@ class FraudAlertController extends Controller
         return response()->json([
             'message' => 'Investigation note added successfully.',
             'data' => [
-                'claim_id' => $claim->id,
+                'claim_id' => $claim->uuid,
                 'note' => $newNote,
             ],
         ], 201);
