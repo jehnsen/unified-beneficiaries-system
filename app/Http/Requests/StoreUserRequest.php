@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class StoreUserRequest extends FormRequest
 {
@@ -22,7 +23,9 @@ class StoreUserRequest extends FormRequest
         return [
             'name'            => ['required', 'string', 'max:100'],
             'email'           => ['required', 'email', 'max:100', 'unique:users,email'],
-            'password'        => ['required', 'string', 'min:8', 'confirmed'],
+            // Government system password policy: 12+ chars, mixed case, numbers, symbols.
+            // 'uncompromised()' rejects passwords found in public breach databases (HaveIBeenPwned API).
+            'password'        => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()->symbols()->uncompromised()],
             'role'            => ['required', Rule::in(['ADMIN', 'ENCODER', 'REVIEWER'])],
             'municipality_id' => ['nullable', 'integer', 'exists:municipalities,id'],
             'is_active'       => ['nullable', 'boolean'],

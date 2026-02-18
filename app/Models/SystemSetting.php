@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * SystemSetting Model
@@ -38,7 +40,7 @@ use Illuminate\Support\Str;
  */
 class SystemSetting extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'uuid',
@@ -60,6 +62,22 @@ class SystemSetting extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    /**
+     * Configure activity logging for system settings.
+     *
+     * Every value change must be audited — these thresholds (Levenshtein distance,
+     * claim frequency limits) directly control the fraud detection engine's sensitivity.
+     * A rogue change here could silently suppress fraud alerts.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['key', 'value', 'description', 'is_editable'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('system_settings');
+    }
 
     /**
      * Boot method - Auto-generate UUID for new records

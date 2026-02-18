@@ -12,10 +12,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'uuid',
@@ -41,6 +43,23 @@ class User extends Authenticatable
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    /**
+     * Configure activity logging for user accounts.
+     *
+     * Role and is_active changes are the highest-risk user events — a deactivated
+     * account being silently reactivated, or a REVIEWER being promoted to ADMIN,
+     * are exactly the kind of privilege escalation this log must capture.
+     * Password is excluded; it's hashed and never meaningful in an audit log.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'role', 'is_active', 'municipality_id'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('users');
+    }
 
     /**
      * Boot method to auto-generate UUID on creation.

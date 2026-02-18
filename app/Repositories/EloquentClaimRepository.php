@@ -6,6 +6,7 @@ namespace App\Repositories;
 
 use App\Interfaces\ClaimRepositoryInterface;
 use App\Models\Claim;
+use App\Models\Municipality;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -155,10 +156,55 @@ class EloquentClaimRepository implements ClaimRepositoryInterface
     }
 
     /**
-     * Mark claim as disbursed with timestamp.
+     * Mark claim as disbursed and atomically increment the municipality's used_budget.
+     *
+     * The lockForUpdate() on Municipality prevents a race condition where two concurrent
+     * disbursements for the same municipality could both read the same used_budget value
+     * and overwrite each other — using increment() is atomic at the DB level, but the
+     * lock ensures the claim's own amount is stable before we read it.
+     *
+     * This method is always called from within a DB::transaction() in DisbursementController,
+     * so the lock will be released automatically when the outer transaction commits or rolls back.
      */
     public function markAsDisbursed(int $claimId, int $userId): Claim
     {
-        return $this->updateStatus($claimId, 'DISBURSED', $userId);
+        $claim = $this->updateStatus($claimId, 'DISBURSED', $userId);
+
+        // Lock the municipality row to prevent concurrent disbursements from producing
+        // a stale used_budget (e.g., two officers disbursing different claims simultaneously).
+        Municipality::where('id', $claim->municipality_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        Municipality::where('id', $claim->municipality_id)
+            ->increment('used_budget', $claim->amount);
+
+        return $claim;
+    }
+
+    /**
+     * Write back the async fraud-check result onto a PENDING_FRAUD_CHECK claim.
+     *
+     * The idempotency guard (`where status = PENDING_FRAUD_CHECK`) ensures that if the
+     * job is retried after a partial failure, a second write cannot overwrite a status
+     * that has already moved forward (e.g. manually set to PENDING by an admin).
+     */
+    public function updateFraudResult(int $claimId, bool $isRisky, ?string $flagReason, array $riskAssessment): Claim
+    {
+        $claim = Claim::findOrFail($claimId);
+
+        // Guard: only update if still in the transient holding state.
+        if ($claim->status !== 'PENDING_FRAUD_CHECK') {
+            return $claim->fresh();
+        }
+
+        $claim->update([
+            'status' => 'PENDING',
+            'is_flagged' => $isRisky,
+            'flag_reason' => $isRisky ? $flagReason : null,
+            'risk_assessment' => $riskAssessment,
+        ]);
+
+        return $claim->fresh();
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\RiskAssessmentResult;
 use App\Interfaces\BeneficiaryRepositoryInterface;
 use App\Interfaces\ClaimRepositoryInterface;
 use App\Interfaces\VerifiedDistinctPairRepositoryInterface;
@@ -129,7 +130,7 @@ class FraudDetectionService
             riskLevel: $riskLevel,
             details: empty($riskFlags)
                 ? 'No fraud risk detected.'
-                : implode(' | ', $riskFlags),
+                : implode('; ', $riskFlags),
             matchingBeneficiaries: $potentialMatches,
             recentClaims: $allClaims
         );
@@ -337,31 +338,5 @@ class FraudDetectionService
         }
 
         return $this->generateRiskReport($beneficiary->id);
-    }
-}
-
-/**
- * Value object for risk assessment results.
- */
-class RiskAssessmentResult
-{
-    public function __construct(
-        public readonly bool $isRisky,
-        public readonly string $riskLevel,
-        public readonly string $details,
-        public readonly ?Collection $matchingBeneficiaries = null,
-        public readonly ?Collection $recentClaims = null
-    ) {
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'is_risky' => $this->isRisky,
-            'risk_level' => $this->riskLevel,
-            'details' => $this->details,
-            'matching_beneficiaries_count' => $this->matchingBeneficiaries?->count() ?? 0,
-            'recent_claims_count' => $this->recentClaims?->count() ?? 0,
-        ];
     }
 }

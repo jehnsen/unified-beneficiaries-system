@@ -10,10 +10,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Beneficiary extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'uuid',
@@ -43,6 +45,35 @@ class Beneficiary extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    /**
+     * Configure activity logging for beneficiary records.
+     *
+     * Name and identity fields are logged because changes to these are the primary
+     * indicator of record tampering. Phonetic hash is derived, not user-supplied, so excluded.
+     * PII fields like contact_number and fingerprint_hash are excluded to limit log exposure.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'first_name',
+                'last_name',
+                'middle_name',
+                'suffix',
+                'birthdate',
+                'gender',
+                'address',
+                'barangay',
+                'id_type',
+                'id_number',
+                'home_municipality_id',
+                'is_active',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('beneficiaries');
+    }
 
     /**
      * Automatically set phonetic hash when last_name is set.

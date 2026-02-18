@@ -14,6 +14,7 @@ use App\Http\Resources\ClaimResource;
 use App\Interfaces\BeneficiaryRepositoryInterface;
 use App\Interfaces\ClaimRepositoryInterface;
 use App\Interfaces\VerifiedDistinctPairRepositoryInterface;
+use App\Jobs\RunFraudCheckJob;
 use App\Models\Beneficiary;
 use App\Models\VerifiedDistinctPair;
 use App\Services\FraudDetectionService;
@@ -138,15 +139,10 @@ class IntakeController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            // Step 2: Run fraud detection
-            $riskResult = $this->fraudService->checkRisk(
-                $beneficiary->first_name,
-                $beneficiary->last_name,
-                $beneficiary->birthdate->format('Y-m-d'),
-                $validated['assistance_type']
-            );
-
-            // Step 3: Create claim with risk assessment
+            // Step 2: Persist the claim immediately at PENDING_FRAUD_CHECK.
+            // The fraud scan is dispatched as an async job after the transaction commits
+            // so the HTTP response is not blocked by a potentially slow phonetic + Levenshtein
+            // scan across the entire provincial beneficiary index.
             $claim = $this->claimRepository->create([
                 'beneficiary_id' => $beneficiary->id,
                 'municipality_id' => auth()->user()->municipality_id ?? $validated['municipality_id'],
@@ -154,26 +150,30 @@ class IntakeController extends Controller
                 'amount' => $validated['amount'],
                 'purpose' => $validated['purpose'] ?? null,
                 'notes' => $validated['notes'] ?? null,
-                'status' => 'PENDING',
-                'is_flagged' => $riskResult->isRisky,
-                'flag_reason' => $riskResult->isRisky ? $riskResult->details : null,
-                'risk_assessment' => $riskResult->toArray(),
+                'status' => 'PENDING_FRAUD_CHECK',
             ]);
 
             DB::commit();
 
-            Log::info('Claim created', [
+            // Dispatch AFTER commit so the job worker can read the persisted claim row.
+            // If dispatched inside the transaction the worker could pick it up before the
+            // commit lands, causing a "claim not found" failure on the first attempt.
+            RunFraudCheckJob::dispatch(
+                $claim->id,
+                $beneficiary->first_name,
+                $beneficiary->last_name,
+                $beneficiary->birthdate->format('Y-m-d'),
+                $validated['assistance_type']
+            );
+
+            Log::info('Claim created — fraud check queued', [
                 'claim_id' => $claim->id,
                 'beneficiary_id' => $beneficiary->id,
-                'is_flagged' => $claim->is_flagged,
-                'risk_level' => $riskResult->riskLevel,
             ]);
 
             return response()->json([
                 'data' => new ClaimResource($claim->load(['beneficiary', 'municipality'])),
-                'message' => $claim->is_flagged
-                    ? 'Claim created but flagged for review due to fraud risk.'
-                    : 'Claim created successfully.',
+                'message' => 'Claim created. Fraud check is running in the background.',
             ], 201);
 
         } catch (\Exception $e) {

@@ -11,10 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Claim extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'uuid',
@@ -46,6 +48,29 @@ class Claim extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    /**
+     * Configure activity logging for the claims lifecycle.
+     *
+     * Tracks every status transition (PENDING → APPROVED → DISBURSED) and fraud flags
+     * because claim state changes are the primary disbursement audit trail.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'status',
+                'is_flagged',
+                'flag_reason',
+                'rejection_reason',
+                'processed_by_user_id',
+                'amount',
+                'assistance_type',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('claims');
+    }
 
     /**
      * Apply tenant scope automatically.
@@ -98,7 +123,26 @@ class Claim extends Model
     }
 
     /**
+     * Investigation notes written against this claim.
+     * Ordered oldest-first so the audit trail reads chronologically.
+     */
+    public function claimNotes(): HasMany
+    {
+        return $this->hasMany(ClaimNote::class)->orderBy('created_at');
+    }
+
+    /**
+     * Check if claim is waiting for fraud scan to complete.
+     * Claims in this state cannot be approved or rejected yet.
+     */
+    public function isPendingFraudCheck(): bool
+    {
+        return $this->status === 'PENDING_FRAUD_CHECK';
+    }
+
+    /**
      * Check if claim is pending approval.
+     * PENDING_FRAUD_CHECK is intentionally excluded — the fraud job must complete first.
      */
     public function isPending(): bool
     {

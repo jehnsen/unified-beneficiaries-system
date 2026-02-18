@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ClaimNoteResource;
 use App\Models\Claim;
+use App\Models\ClaimNote;
+use App\Models\User;
 use App\Services\FraudDetectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -241,9 +244,13 @@ class FraudAlertController extends Controller
     public function assign(Request $request, Claim $claim): JsonResponse
     {
         // Laravel automatically injects the flagged claim via custom route binding
+        // Accept UUID instead of raw integer ID to prevent user enumeration attacks.
         $request->validate([
-            'assigned_to_user_id' => 'required|exists:users,id',
+            'assigned_to_user_uuid' => 'required|string|exists:users,uuid',
         ]);
+
+        // Resolve internal ID from UUID — internal IDs are never exposed to the API consumer.
+        $assignedUser = User::where('uuid', $request->assigned_to_user_uuid)->firstOrFail();
 
         $user = $request->user();
         $isProvincial = $user->isProvincialStaff();
@@ -257,7 +264,7 @@ class FraudAlertController extends Controller
         }
 
         $claim->update([
-            'processed_by_user_id' => $request->assigned_to_user_id,
+            'processed_by_user_id' => $assignedUser->id,
             'status' => 'UNDER_REVIEW',
         ]);
 
@@ -274,40 +281,33 @@ class FraudAlertController extends Controller
     /**
      * Add investigation note to fraud alert.
      * Route model binding automatically injects the claim via UUID.
+     *
+     * Notes are stored as discrete ClaimNote rows rather than appended text so they
+     * are individually queryable, pageable, and immutable after creation.
      */
     public function addNote(Request $request, Claim $claim): JsonResponse
     {
-        // Laravel automatically injects the flagged claim via custom route binding
         $request->validate([
             'note' => 'required|string|max:1000',
         ]);
 
         $user = $request->user();
-        $isProvincial = $user->isProvincialStaff();
-        $userMunicipalityId = $user->municipality_id;
 
-        // Enforce authorization for municipal users
-        if (!$isProvincial && $claim->municipality_id !== $userMunicipalityId) {
+        if (!$user->isProvincialStaff() && $claim->municipality_id !== $user->municipality_id) {
             return response()->json([
                 'message' => 'Fraud alert not found or you do not have permission to modify it.',
             ], 403);
         }
 
-        // Append note to existing notes with timestamp and author
-        $timestamp = now()->toIso8601String();
-        $newNote = "[{$timestamp}] {$user->name}: {$request->note}";
-        $existingNotes = $claim->notes ? $claim->notes . "\n\n" : '';
-
-        $claim->update([
-            'notes' => $existingNotes . $newNote,
+        $claimNote = ClaimNote::create([
+            'claim_id' => $claim->id,
+            'user_id'  => $user->id,
+            'note'     => $request->note,
         ]);
 
         return response()->json([
             'message' => 'Investigation note added successfully.',
-            'data' => [
-                'claim_id' => $claim->uuid,
-                'note' => $newNote,
-            ],
+            'data'    => new ClaimNoteResource($claimNote->load('author')),
         ], 201);
     }
 

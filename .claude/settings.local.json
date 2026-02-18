@@ -33,7 +33,8 @@
       "Bash(test:*)",
       "Bash(composer require:*)",
       "Bash(C:Users252164.JEnrique.configherd-litebincomposer.bat require laravel/scout)",
-      "Bash(\"C:\\\\Users\\\\252164.JEnrique\\\\.config\\\\herd-lite\\\\bin\\\\composer.bat\" require laravel/scout)"
+      "Bash(\"C:\\\\Users\\\\252164.JEnrique\\\\.config\\\\herd-lite\\\\bin\\\\composer.bat\" require laravel/scout)",
+      "Bash(ls:*)"
     ]
   }
 }

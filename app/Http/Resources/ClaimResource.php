@@ -56,6 +56,9 @@ class ClaimResource extends JsonResource
 
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
+
+            // Investigation notes — only included when the relation is eagerly loaded
+            'claim_notes' => ClaimNoteResource::collection($this->whenLoaded('claimNotes')),
         ];
     }
 }

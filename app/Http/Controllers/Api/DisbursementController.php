@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ApprovClaimRequest;
+use App\Http\Requests\ApproveClaimRequest;
+use App\Http\Requests\MarkUnderReviewRequest;
 use App\Http\Requests\RejectClaimRequest;
 use App\Http\Requests\UploadDisbursementProofRequest;
 use App\Http\Resources\ClaimResource;
@@ -37,7 +38,7 @@ class DisbursementController extends Controller
      *
      * @route POST /api/disbursement/claims/{claim:uuid}/approve
      */
-    public function approve(Claim $claim, ApprovClaimRequest $request): JsonResponse
+    public function approve(Claim $claim, ApproveClaimRequest $request): JsonResponse
     {
         // Laravel automatically injects the model via UUID route binding
         $user = auth()->user();
@@ -240,6 +241,56 @@ class DisbursementController extends Controller
                 'message' => config('app.debug') ? $e->getMessage() : 'An internal error occurred.',
             ], 500);
         }
+    }
+
+    /**
+     * Place a claim under manual review.
+     * Route model binding automatically injects the claim via UUID.
+     *
+     * This is the missing step between PENDING and APPROVED: a reviewer who
+     * needs extra time or has questions can hold a claim in UNDER_REVIEW without
+     * either approving or rejecting it. The fraud alert assign endpoint also
+     * transitions to UNDER_REVIEW, but only for flagged claims. This endpoint
+     * handles the general case (flagged or not).
+     *
+     * @route POST /api/disbursement/claims/{claim:uuid}/review
+     */
+    public function markUnderReview(Claim $claim, MarkUnderReviewRequest $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        if ($user->isMunicipalStaff() && $claim->municipality_id !== $user->municipality_id) {
+            return response()->json([
+                'error' => 'Unauthorized. You can only manage claims from your municipality.',
+            ], 403);
+        }
+
+        // Only claims that are currently PENDING or PENDING_FRAUD_CHECK can move to UNDER_REVIEW.
+        // Approved, disbursed, or rejected claims must not be put back into the review queue.
+        if (!$claim->isPending() && !$claim->isPendingFraudCheck()) {
+            return response()->json([
+                'error' => 'Only pending claims can be placed under review.',
+                'current_status' => $claim->status,
+            ], 422);
+        }
+
+        $updateData = ['status' => 'UNDER_REVIEW'];
+
+        if ($request->filled('notes')) {
+            $updateData['notes'] = $request->input('notes');
+        }
+
+        $claim->update($updateData);
+
+        Log::info('Claim placed under review', [
+            'claim_id' => $claim->id,
+            'reviewed_by' => $user->id,
+        ]);
+
+        return response()->json([
+            'data' => new ClaimResource($claim->fresh()->load(['beneficiary', 'municipality', 'processedBy'])),
+            'message' => 'Claim placed under review.',
+        ], 200);
     }
 
     /**

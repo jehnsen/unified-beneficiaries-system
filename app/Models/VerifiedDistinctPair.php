@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * VerifiedDistinctPair Model
@@ -21,7 +23,7 @@ use Illuminate\Support\Str;
  */
 class VerifiedDistinctPair extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'uuid',
@@ -48,6 +50,30 @@ class VerifiedDistinctPair extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    /**
+     * Configure activity logging for whitelist pair management.
+     *
+     * Every status transition (VERIFIED_DISTINCT → REVOKED) is a compliance event:
+     * it directly controls which beneficiary pairs skip future fraud checks.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'verification_status',
+                'verification_reason',
+                'notes',
+                'verified_by_user_id',
+                'verified_at',
+                'revoked_by_user_id',
+                'revoked_at',
+                'revocation_reason',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('verified_pairs');
+    }
 
     /**
      * Boot method - Auto-generate UUID and normalize pair order.

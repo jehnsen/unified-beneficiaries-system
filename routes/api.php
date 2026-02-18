@@ -14,7 +14,9 @@ use App\Http\Controllers\Api\MunicipalityController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\UserController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Provincial UBIS API Routes
@@ -36,12 +38,41 @@ Route::post('/auth/login', [AuthController::class, 'login'])
     ->name('auth.login');
 
 Route::get('/health', function () {
+    $checks = [];
+    $allOk = true;
+
+    // Check 1: Database connectivity
+    // A dead DB connection silently breaks every authenticated endpoint — surface it here
+    // so load balancers and uptime monitors can pull the instance out of rotation.
+    try {
+        DB::connection()->getPdo();
+        $checks['database'] = 'ok';
+    } catch (\Throwable $e) {
+        $checks['database'] = 'error';
+        $allOk = false;
+    }
+
+    // Check 2: Storage disk write-path
+    // Disbursement proof uploads go to this disk; if it's unwritable the proof endpoint
+    // will fail silently mid-transaction. Detect it here before a real upload attempt.
+    try {
+        Storage::disk('local')->exists('.gitkeep');
+        $checks['storage'] = 'ok';
+    } catch (\Throwable $e) {
+        $checks['storage'] = 'error';
+        $allOk = false;
+    }
+
+    $status = $allOk ? 'ok' : 'degraded';
+    $httpCode = $allOk ? 200 : 503;
+
     return response()->json([
-        'status' => 'ok',
-        'service' => 'Provincial UBIS API',
-        'version' => '1.0.0',
+        'status'    => $status,
+        'service'   => 'Provincial UBIS API',
+        'version'   => '1.0.0',
         'timestamp' => now()->toIso8601String(),
-    ]);
+        'checks'    => $checks,
+    ], $httpCode);
 })->name('health');
 
 // ================================================================
@@ -177,9 +208,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     });
 
     // ============================================================
-    // DISBURSEMENT MODULE - Approve, Reject, and Upload Proof
+    // DISBURSEMENT MODULE - Approve, Reject, Review, and Upload Proof
     // ============================================================
     Route::prefix('disbursement')->group(function () {
+        Route::post('/claims/{claim:uuid}/review', [DisbursementController::class, 'markUnderReview'])
+            ->name('disbursement.review');
         Route::post('/claims/{claim:uuid}/approve', [DisbursementController::class, 'approve'])
             ->name('disbursement.approve')
             ->middleware('can:approve-claims');

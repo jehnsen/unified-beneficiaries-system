@@ -9,10 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Municipality extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'uuid',
@@ -36,6 +38,22 @@ class Municipality extends Model
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    /**
+     * Configure activity logging for municipalities.
+     *
+     * Budget and status changes are audited — used_budget is incremented
+     * automatically on disbursement (see EloquentClaimRepository), so its log
+     * entries provide a secondary budget ledger for compliance reconciliation.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'code', 'status', 'is_active', 'allocated_budget', 'used_budget'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('municipalities');
+    }
 
     /**
      * Boot method to auto-generate UUID on creation.

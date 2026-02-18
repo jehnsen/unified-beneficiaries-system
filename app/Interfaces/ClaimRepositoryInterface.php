@@ -65,4 +65,13 @@ interface ClaimRepositoryInterface
      * Mark claim as disbursed with timestamp.
      */
     public function markAsDisbursed(int $claimId, int $userId): Claim;
+
+    /**
+     * Write back the async fraud-check result onto a PENDING_FRAUD_CHECK claim.
+     *
+     * Called exclusively by RunFraudCheckJob after the scan completes.
+     * Transitions the claim from PENDING_FRAUD_CHECK → PENDING, and sets
+     * is_flagged + flag_reason + risk_assessment from the scan result.
+     */
+    public function updateFraudResult(int $claimId, bool $isRisky, ?string $flagReason, array $riskAssessment): Claim;
 }
