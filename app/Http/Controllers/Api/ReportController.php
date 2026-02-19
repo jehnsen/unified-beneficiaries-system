@@ -246,11 +246,7 @@ class ReportController extends Controller
         // By fraud type
         $byFraudType = (clone $claimQuery)
             ->select(
-                DB::raw("CASE
-                    WHEN flag_reason LIKE '%DUPLICATE%' OR flag_reason LIKE '%SAME TYPE%' THEN 'Duplicate Claim'
-                    WHEN flag_reason LIKE '%HIGH FREQUENCY%' OR flag_reason LIKE '%Multiple claims%' THEN 'Multiple Claims'
-                    WHEN flag_reason LIKE '%IDENTITY%' OR flag_reason LIKE '%mismatch%' THEN 'Identity Mismatch'
-                    ELSE 'Other' END as fraud_type"),
+                DB::raw(Claim::alertTypeSqlCase()),
                 DB::raw('COUNT(*) as count')
             )
             ->groupBy('fraud_type')

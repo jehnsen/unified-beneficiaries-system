@@ -419,16 +419,7 @@ class DashboardService
         $riskLevel = $claim->risk_assessment['risk_level'] ?? 'MEDIUM';
         $alertCode = 'ALT-' . str_pad((string) $claim->id, 3, '0', STR_PAD_LEFT);
 
-        $alertType = 'Unknown';
-        $flagReason = $claim->flag_reason ?? '';
-
-        if (str_contains($flagReason, 'DUPLICATE') || str_contains($flagReason, 'SAME TYPE')) {
-            $alertType = 'Duplicate Claim';
-        } elseif (str_contains($flagReason, 'HIGH FREQUENCY') || str_contains($flagReason, 'Multiple claims')) {
-            $alertType = 'Multiple Claims';
-        } elseif (str_contains($flagReason, 'IDENTITY') || str_contains($flagReason, 'mismatch')) {
-            $alertType = 'Identity Mismatch';
-        }
+        $alertType = $claim->getAlertType();
 
         return [
             'id' => $claim->id,

@@ -18,6 +18,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // SQLite stores ENUM as plain TEXT — the column already accepts any string value,
+        // so no DDL change is needed. MODIFY COLUMN is MySQL syntax only.
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         DB::statement("
             ALTER TABLE claims
             MODIFY COLUMN status ENUM(
@@ -34,6 +40,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Restore the original enum without PENDING_FRAUD_CHECK.
         // Any rows still in PENDING_FRAUD_CHECK (job never ran) are set to PENDING first
         // to avoid a constraint violation on the MODIFY.

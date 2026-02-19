@@ -62,7 +62,7 @@ class FraudDetectionService
         // This prevents repeatedly flagging verified distinct beneficiaries
         $targetBeneficiary = Beneficiary::where('first_name', $firstName)
             ->where('last_name', $lastName)
-            ->where('birthdate', $birthdate)
+            ->whereDate('birthdate', $birthdate)
             ->first();
 
         if ($targetBeneficiary) {

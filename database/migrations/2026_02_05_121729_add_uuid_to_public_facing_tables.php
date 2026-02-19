@@ -6,6 +6,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -34,11 +35,17 @@ return new class extends Migration
             $table->uuid('uuid')->nullable()->after('id')->comment('Public-facing identifier');
         });
 
-        // Step 2: Backfill existing records with UUIDs (MySQL 8.0 UUID() function)
-        DB::statement('UPDATE municipalities SET uuid = UUID() WHERE uuid IS NULL');
-        DB::statement('UPDATE users SET uuid = UUID() WHERE uuid IS NULL');
-        DB::statement('UPDATE beneficiaries SET uuid = UUID() WHERE uuid IS NULL');
-        DB::statement('UPDATE claims SET uuid = UUID() WHERE uuid IS NULL');
+        // Step 2: Backfill existing records with UUIDs.
+        // Uses PHP-level generation so the migration works on both MySQL and SQLite
+        // (SQLite has no native UUID() function). For large production tables this
+        // runs in chunks to avoid locking the table for the full duration.
+        foreach (['municipalities', 'users', 'beneficiaries', 'claims'] as $table) {
+            DB::table($table)->whereNull('uuid')->chunkById(200, function ($rows) use ($table) {
+                foreach ($rows as $row) {
+                    DB::table($table)->where('id', $row->id)->update(['uuid' => (string) Str::uuid()]);
+                }
+            });
+        }
 
         // Step 3: Make uuid NOT NULL and UNIQUE after backfilling
         Schema::table('municipalities', function (Blueprint $table) {

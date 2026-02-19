@@ -103,7 +103,7 @@ class EloquentBeneficiaryRepository implements BeneficiaryRepositoryInterface
         return DB::transaction(function () use ($data) {
             $existing = Beneficiary::where('first_name', $data['first_name'])
                 ->where('last_name', $data['last_name'])
-                ->where('birthdate', $data['birthdate'])
+                ->whereDate('birthdate', $data['birthdate'])
                 ->lockForUpdate()
                 ->first();
 
@@ -129,9 +129,10 @@ class EloquentBeneficiaryRepository implements BeneficiaryRepositoryInterface
 
         $query = Beneficiary::where('last_name_phonetic', $lastNamePhonetic);
 
-        // Add birthdate filter if provided for higher precision
+        // Add birthdate filter if provided for higher precision.
+        // whereDate() ensures correct date-only comparison on both MySQL and SQLite.
         if ($birthdate) {
-            $query->where('birthdate', $birthdate);
+            $query->whereDate('birthdate', $birthdate);
         }
 
         $results = $query->get();

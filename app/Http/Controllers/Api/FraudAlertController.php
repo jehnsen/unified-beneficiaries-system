@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Services\FraudDetectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class FraudAlertController extends Controller
 {
@@ -89,11 +88,13 @@ class FraudAlertController extends Controller
             'purpose' => $claim->purpose,
             'date_filed' => $claim->created_at->toIso8601String(),
             'status' => $claim->status,
-            'submitted_documents' => $claim->disbursementProofs->map(fn ($proof) => [
-                'type' => $this->inferDocumentType($proof->photo_url),
-                'url' => $proof->photo_url,
-                'uploaded_at' => $proof->created_at->toIso8601String(),
-            ]),
+            'submitted_documents' => $claim->disbursementProofs->flatMap(
+                fn ($proof) => collect($proof->getSubmittedDocuments())->map(fn ($doc) => [
+                    'type' => $doc['type'],
+                    'url'  => $doc['url'],
+                    'uploaded_at' => $proof->created_at->toIso8601String(),
+                ])
+            ),
             'municipality' => $claim->municipality->name,
             'notes' => $isSameMunicipality ? $claim->notes : 'Details hidden - Different municipality',
         ];
@@ -204,17 +205,7 @@ class FraudAlertController extends Controller
         // ============================================================
         // 6. ALERT SUMMARY
         // ============================================================
-        $alertType = 'Unknown';
-        if (str_contains($claim->flag_reason ?? '', 'DUPLICATE') ||
-            str_contains($claim->flag_reason ?? '', 'SAME TYPE')) {
-            $alertType = 'Duplicate Claim';
-        } elseif (str_contains($claim->flag_reason ?? '', 'HIGH FREQUENCY') ||
-                  str_contains($claim->flag_reason ?? '', 'Multiple claims')) {
-            $alertType = 'Multiple Claims';
-        } elseif (str_contains($claim->flag_reason ?? '', 'IDENTITY') ||
-                  str_contains($claim->flag_reason ?? '', 'mismatch')) {
-            $alertType = 'Identity Mismatch';
-        }
+        $alertType = $claim->getAlertType();
 
         return response()->json([
             'data' => [
@@ -311,23 +302,4 @@ class FraudAlertController extends Controller
         ], 201);
     }
 
-    /**
-     * Infer document type from file URL.
-     */
-    private function inferDocumentType(string $url): string
-    {
-        $url = strtolower($url);
-
-        if (str_contains($url, 'death') || str_contains($url, 'certificate')) {
-            return 'Death Certificate';
-        }
-        if (str_contains($url, 'barangay') || str_contains($url, 'clearance')) {
-            return 'Barangay Clearance';
-        }
-        if (str_contains($url, 'valid') || str_contains($url, 'id')) {
-            return 'Valid ID';
-        }
-
-        return 'Supporting Document';
-    }
 }

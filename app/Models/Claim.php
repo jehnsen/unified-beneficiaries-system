@@ -181,4 +181,43 @@ class Claim extends Model
     {
         return 'uuid';
     }
+
+    /**
+     * Classify this claim's alert type from its stored flag_reason string.
+     *
+     * Single source of truth: FraudAlertController and DashboardService both call
+     * this method so the keyword list never drifts out of sync across callers.
+     */
+    public function getAlertType(): string
+    {
+        $reason = $this->flag_reason ?? '';
+
+        if (str_contains($reason, 'DUPLICATE') || str_contains($reason, 'SAME TYPE')) {
+            return 'Duplicate Claim';
+        }
+        if (str_contains($reason, 'HIGH FREQUENCY') || str_contains($reason, 'Multiple claims')) {
+            return 'Multiple Claims';
+        }
+        if (str_contains($reason, 'IDENTITY') || str_contains($reason, 'mismatch')) {
+            return 'Identity Mismatch';
+        }
+
+        return 'Unknown';
+    }
+
+    /**
+     * Return a SQL CASE expression that mirrors getAlertType() for DB-level GROUP BY queries.
+     *
+     * ReportController needs to classify fraud type directly in MySQL (for COUNT aggregation)
+     * so it can't call getAlertType() on each row. This method keeps the keywords in one
+     * place so a future keyword change is one edit, not two.
+     */
+    public static function alertTypeSqlCase(): string
+    {
+        return "CASE
+            WHEN flag_reason LIKE '%DUPLICATE%' OR flag_reason LIKE '%SAME TYPE%' THEN 'Duplicate Claim'
+            WHEN flag_reason LIKE '%HIGH FREQUENCY%' OR flag_reason LIKE '%Multiple claims%' THEN 'Multiple Claims'
+            WHEN flag_reason LIKE '%IDENTITY%' OR flag_reason LIKE '%mismatch%' THEN 'Identity Mismatch'
+            ELSE 'Other' END as fraud_type";
+    }
 }
