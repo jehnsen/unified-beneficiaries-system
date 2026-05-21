@@ -39,7 +39,11 @@
       "Bash(\"/d/xampp/mysql/bin/mysql\" -uroot -e \"CREATE DATABASE IF NOT EXISTS ubis_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\")",
       "Bash(\"/d/xampp/mysql/bin/mysql\":*)",
       "Bash(\"/d/xampp/mysql/bin/mysql\" --socket=\"D:/xampp/mysql/mysql.sock\" -uroot -ppassword123 -e \"SELECT VERSION\\(\\); CREATE DATABASE IF NOT EXISTS ubis_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; SHOW DATABASES LIKE ''ubis%'';\")",
-      "Bash(\"/d/xampp/mysql/bin/mysql\" -uroot -e \"SELECT VERSION\\(\\); SHOW DATABASES LIKE ''ubis%'';\")"
+      "Bash(\"/d/xampp/mysql/bin/mysql\" -uroot -e \"SELECT VERSION\\(\\); SHOW DATABASES LIKE ''ubis%'';\")",
+      "Bash(Enums\")",
+      "Bash(git -C \"d:\\\\xampp\\\\apache\\\\bin\\\\FE\\\\ubis\" status)",
+      "Bash(git -C \"d:\\\\xampp\\\\apache\\\\bin\\\\FE\\\\ubis\" diff)",
+      "Bash(git -C \"d:\\\\xampp\\\\apache\\\\bin\\\\FE\\\\ubis\" log --oneline -5)"
     ]
   }
 }
