@@ -63,7 +63,14 @@ class EloquentClaimRepository implements ClaimRepositoryInterface
 
     /**
      * Get recent claims for a beneficiary across ALL municipalities.
-     * Critical for fraud detection - ignores tenant scope.
+     * Critical for fraud detection — TenantScope is intentionally bypassed here
+     * because fraud checks must be cross-municipality by design.
+     *
+     * Soft-delete safety: Claim uses the SoftDeletes global scope, so soft-deleted
+     * claims (deleted_at IS NOT NULL) are excluded automatically by Eloquent.
+     * The status filter below provides an additional layer — only active workflow
+     * statuses are included, so CANCELLED/REJECTED claims that were later soft-deleted
+     * are doubly excluded.
      */
     public function getRecentClaimsForBeneficiary(
         int $beneficiaryId,

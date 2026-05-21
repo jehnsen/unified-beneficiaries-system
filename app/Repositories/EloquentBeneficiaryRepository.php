@@ -122,12 +122,20 @@ class EloquentBeneficiaryRepository implements BeneficiaryRepositoryInterface
      * Search beneficiaries using phonetic matching.
      * Layer 1: DB filter using SOUNDEX index (fast)
      * Layer 2: PHP levenshtein ranking (accurate)
+     *
+     * Soft-delete safety: Beneficiary uses the SoftDeletes global scope, so
+     * deleted_at IS NULL is applied automatically by Eloquent. No raw DB:: calls
+     * or withoutGlobalScopes() are used here, making this safe by default.
+     *
+     * homeMunicipality is eager-loaded to prevent an N+1 when FraudDetectionService
+     * iterates over results and accesses municipality names in generateRiskReport().
      */
     public function searchByPhonetic(string $firstName, string $lastName, ?string $birthdate = null): Collection
     {
         $lastNamePhonetic = soundex($lastName);
 
-        $query = Beneficiary::where('last_name_phonetic', $lastNamePhonetic);
+        $query = Beneficiary::with('homeMunicipality')
+            ->where('last_name_phonetic', $lastNamePhonetic);
 
         // Add birthdate filter if provided for higher precision.
         // whereDate() ensures correct date-only comparison on both MySQL and SQLite.

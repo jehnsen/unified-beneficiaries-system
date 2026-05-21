@@ -153,14 +153,22 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     // ============================================================
     // INTAKE MODULE - Search, Assess, and Create Claims
     // ============================================================
+    // Fraud-check routes run a phonetic scan + Levenshtein pass over the full
+    // beneficiary table on every request. A dedicated throttle (10 req/min) stacks
+    // on top of the outer 60 req/min limit to prevent concurrent scans from causing
+    // DB lock contention that would delay legitimate disbursements.
     Route::prefix('intake')->group(function () {
         Route::post('/check-duplicate', [IntakeController::class, 'checkDuplicate'])
+            ->middleware('throttle:10,1')
             ->name('intake.check-duplicate');
         Route::post('/assess-risk', [IntakeController::class, 'assessRisk'])
+            ->middleware('throttle:10,1')
             ->name('intake.assess-risk');
         Route::post('/claims', [IntakeController::class, 'storeClaim'])
+            ->middleware('throttle:10,1')
             ->name('intake.store-claim');
         Route::get('/beneficiaries/{beneficiary:uuid}/risk-report', [IntakeController::class, 'getRiskReport'])
+            ->middleware('throttle:10,1')
             ->name('intake.risk-report');
         Route::get('/flagged-claims', [IntakeController::class, 'getFlaggedClaims'])
             ->name('intake.flagged-claims');
