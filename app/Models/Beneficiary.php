@@ -51,7 +51,9 @@ class Beneficiary extends Model
      *
      * Name and identity fields are logged because changes to these are the primary
      * indicator of record tampering. Phonetic hash is derived, not user-supplied, so excluded.
-     * PII fields like contact_number and fingerprint_hash are excluded to limit log exposure.
+     * contact_number IS included: a phone number change on a flagged beneficiary is a known
+     * fraud signal (account takeover / identity substitution) and must appear in the audit trail.
+     * fingerprint_hash is excluded — it is binary, not human-readable, and adds no investigative value.
      */
     public function getActivitylogOptions(): LogOptions
     {
@@ -63,6 +65,7 @@ class Beneficiary extends Model
                 'suffix',
                 'birthdate',
                 'gender',
+                'contact_number',
                 'address',
                 'barangay',
                 'id_type',

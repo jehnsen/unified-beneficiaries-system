@@ -11,9 +11,9 @@ return [
     'guard' => ['web'],
 
     // Token lifetime in minutes. Null = never expires (insecure for a government API).
-    // Default: 480 minutes (8 hours) — covers a full work shift without requiring mid-day re-login.
-    // Override via SANCTUM_EXPIRATION env var for tighter windows in production (e.g. 60 = 1 hour).
-    'expiration' => env('SANCTUM_EXPIRATION', 60 * 8),
+    // 60 minutes: limits blast radius of a stolen token to one session window.
+    // Override via SANCTUM_EXPIRATION env var (e.g., SANCTUM_EXPIRATION=30 for higher-security deploys).
+    'expiration' => env('SANCTUM_EXPIRATION', 60),
 
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
 

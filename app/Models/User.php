@@ -28,6 +28,8 @@ class User extends Authenticatable
         'role',
         'is_active',
         'email_verified_at',
+        'failed_login_attempts',
+        'locked_at',
     ];
 
     protected $hidden = [
@@ -38,10 +40,12 @@ class User extends Authenticatable
     protected $casts = [
         'is_active' => 'boolean',
         'email_verified_at' => 'datetime',
+        'locked_at' => 'datetime',
         'password' => 'hashed',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
+        'failed_login_attempts' => 'integer',
     ];
 
     /**
@@ -55,7 +59,7 @@ class User extends Authenticatable
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'role', 'is_active', 'municipality_id'])
+            ->logOnly(['name', 'email', 'role', 'is_active', 'municipality_id', 'locked_at'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('users');
@@ -130,6 +134,15 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'ADMIN';
+    }
+
+    /**
+     * Check if the account is locked due to too many failed login attempts.
+     * Locked accounts require explicit admin intervention via POST /users/{uuid}/unlock.
+     */
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
     }
 
     /**

@@ -74,4 +74,12 @@ interface ClaimRepositoryInterface
      * is_flagged + flag_reason + risk_assessment from the scan result.
      */
     public function updateFraudResult(int $claimId, bool $isRisky, ?string $flagReason, array $riskAssessment): Claim;
+
+    /**
+     * Reverse a disbursed claim and roll back the municipality's used_budget.
+     *
+     * Only valid for DISBURSED claims. Restricted to Provincial Admin.
+     * Must be called inside a DB::transaction() in the controller.
+     */
+    public function reverse(int $claimId, int $userId, string $reversalReason): Claim;
 }

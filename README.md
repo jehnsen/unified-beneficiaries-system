@@ -109,3 +109,16 @@ The Win: Allows you to set thresholds (e.g., "Auto-reject if > 95%", "Flag for r
 What it does: An Admin API to change rules on the fly (e.g., changing the "Double Dipping" window from 30 days to 15 days).
 
 The Win: You don't need to redeploy code just to change a policy setting.
+
+
+## Compliance Checklist (Government Deployment Gate)
+  🛡️ Penetration test completed
+  🛡️ CORS locked to specific frontend origins
+  🛡️ SSL/TLS enforced (HTTPS only, HSTS header)
+  🛡️ Database encrypted at rest
+  🛡️ Backup schedule verified (spatie/laravel-backup is installed — confirm it's scheduled)
+  🛡️ Audit log retention ≥ 7 years
+  🛡️ Data Privacy Act (RA 10173) compliance review on PII handling
+  🛡️ Load test at expected concurrent user count
+  🛡️ OpenAPI/Swagger documentation for all endpoints
+  🛡️ Incident response plan documented

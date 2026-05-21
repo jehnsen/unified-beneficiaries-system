@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Exceptions\InsufficientBudgetException;
 use App\Interfaces\ClaimRepositoryInterface;
 use App\Models\Claim;
 use App\Models\Municipality;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -172,14 +172,55 @@ class EloquentClaimRepository implements ClaimRepositoryInterface
 
         // Lock the municipality row to prevent concurrent disbursements from producing
         // a stale used_budget (e.g., two officers disbursing different claims simultaneously).
+        $municipality = Municipality::where('id', $claim->municipality_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        // Guard against budget overflow. The lock above ensures the budget values are
+        // current — without it, two concurrent disbursements could both read the same
+        // used_budget and both pass this check before either writes.
+        if ((float) $municipality->used_budget + (float) $claim->amount > (float) $municipality->allocated_budget) {
+            throw new InsufficientBudgetException(\sprintf(
+                'Disbursement of ₱%s would exceed %s\'s allocated budget (remaining: ₱%s).',
+                number_format((float) $claim->amount, 2),
+                $municipality->name,
+                number_format($municipality->getRemainingBudgetAttribute(), 2),
+            ));
+        }
+
+        Municipality::where('id', $claim->municipality_id)
+            ->increment('used_budget', (float) $claim->amount);
+
+        return $claim;
+    }
+
+    /**
+     * Reverse a disbursed claim and atomically decrement the municipality's used_budget.
+     *
+     * Mirrors markAsDisbursed() in reverse: locks the municipality row first to prevent
+     * a concurrent disbursement from reading a stale used_budget during the decrement.
+     * Must be called inside a DB::transaction() in DisbursementController.
+     */
+    public function reverse(int $claimId, int $userId, string $reversalReason): Claim
+    {
+        $claim = Claim::withoutGlobalScopes()->findOrFail($claimId);
+
+        $claim->update([
+            'status'               => 'REVERSED',
+            'processed_by_user_id' => $userId,
+            'reversal_reason'      => $reversalReason,
+            'reversed_at'          => now(),
+        ]);
+
+        // Lock before decrement to keep used_budget consistent under concurrency.
         Municipality::where('id', $claim->municipality_id)
             ->lockForUpdate()
             ->firstOrFail();
 
         Municipality::where('id', $claim->municipality_id)
-            ->increment('used_budget', $claim->amount);
+            ->decrement('used_budget', (float) $claim->amount);
 
-        return $claim;
+        return $claim->fresh();
     }
 
     /**

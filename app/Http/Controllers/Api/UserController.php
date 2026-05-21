@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -89,6 +90,42 @@ class UserController extends Controller
         return response()->json([
             'data' => new UserResource($updated),
             'message' => 'User updated successfully.',
+        ]);
+    }
+
+    /**
+     * Unlock a user account that was locked by the automated lockout policy.
+     *
+     * Resets failed_login_attempts and locked_at. Municipal Admin can only unlock
+     * users within their own municipality; Provincial Admin can unlock any user.
+     *
+     * @route POST /api/v1/users/{user:uuid}/unlock
+     */
+    public function unlock(User $user): JsonResponse
+    {
+        $authUser = auth()->user();
+
+        if (!$authUser->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized. Admin access required.'], 403);
+        }
+
+        if ($authUser->isMunicipalStaff() && $user->municipality_id !== $authUser->municipality_id) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $user->update([
+            'failed_login_attempts' => 0,
+            'locked_at'             => null,
+        ]);
+
+        Log::info('User account unlocked by admin', [
+            'unlocked_user_id' => $user->id,
+            'unlocked_by'      => $authUser->id,
+        ]);
+
+        return response()->json([
+            'data'    => new UserResource($user->fresh()),
+            'message' => 'Account unlocked successfully.',
         ]);
     }
 

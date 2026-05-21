@@ -32,6 +32,8 @@ class Claim extends Model
         'disbursed_at',
         'rejected_at',
         'rejection_reason',
+        'reversed_at',
+        'reversal_reason',
         'is_flagged',
         'flag_reason',
         'risk_assessment',
@@ -44,6 +46,7 @@ class Claim extends Model
         'approved_at' => 'datetime',
         'disbursed_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'reversed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
@@ -63,6 +66,7 @@ class Claim extends Model
                 'is_flagged',
                 'flag_reason',
                 'rejection_reason',
+                'reversal_reason',
                 'processed_by_user_id',
                 'amount',
                 'assistance_type',
@@ -146,7 +150,7 @@ class Claim extends Model
      */
     public function isPending(): bool
     {
-        return in_array($this->status, ['PENDING', 'UNDER_REVIEW']);
+        return \in_array($this->status, ['PENDING', 'UNDER_REVIEW'], true);
     }
 
     /**
@@ -170,7 +174,16 @@ class Claim extends Model
      */
     public function isRejected(): bool
     {
-        return in_array($this->status, ['REJECTED', 'CANCELLED']);
+        return \in_array($this->status, ['REJECTED', 'CANCELLED'], true);
+    }
+
+    /**
+     * Check if claim was reversed by a Provincial Admin after disbursement.
+     * Reversed claims have their budget impact rolled back.
+     */
+    public function isReversed(): bool
+    {
+        return $this->status === 'REVERSED';
     }
 
     /**

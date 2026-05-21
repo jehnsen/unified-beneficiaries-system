@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\AssistanceTypeController;
+use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\BeneficiaryController;
 use App\Http\Controllers\Api\ClaimController;
 use App\Http\Controllers\Api\DashboardController;
@@ -14,9 +16,7 @@ use App\Http\Controllers\Api\MunicipalityController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\UserController;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Provincial UBIS API Routes
@@ -37,43 +37,7 @@ Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware('throttle:5,1')
     ->name('auth.login');
 
-Route::get('/health', function () {
-    $checks = [];
-    $allOk = true;
-
-    // Check 1: Database connectivity
-    // A dead DB connection silently breaks every authenticated endpoint — surface it here
-    // so load balancers and uptime monitors can pull the instance out of rotation.
-    try {
-        DB::connection()->getPdo();
-        $checks['database'] = 'ok';
-    } catch (\Throwable $e) {
-        $checks['database'] = 'error';
-        $allOk = false;
-    }
-
-    // Check 2: Storage disk write-path
-    // Disbursement proof uploads go to this disk; if it's unwritable the proof endpoint
-    // will fail silently mid-transaction. Detect it here before a real upload attempt.
-    try {
-        Storage::disk('local')->exists('.gitkeep');
-        $checks['storage'] = 'ok';
-    } catch (\Throwable $e) {
-        $checks['storage'] = 'error';
-        $allOk = false;
-    }
-
-    $status = $allOk ? 'ok' : 'degraded';
-    $httpCode = $allOk ? 200 : 503;
-
-    return response()->json([
-        'status'    => $status,
-        'service'   => 'Provincial UBIS API',
-        'version'   => '1.0.0',
-        'timestamp' => now()->toIso8601String(),
-        'checks'    => $checks,
-    ], $httpCode);
-})->name('health');
+Route::get('/health', [HealthController::class, 'liveness'])->name('health');
 
 // ================================================================
 // PROTECTED ROUTES (Sanctum authentication required)
@@ -86,6 +50,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     // AUTH - Logout & Profile
     // ============================================================
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
+    Route::post('/auth/logout-all', [AuthController::class, 'logoutAll'])->name('auth.logout-all');
     Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
 
     // ============================================================
@@ -119,6 +84,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/', [UserController::class, 'store'])->name('users.store');
         Route::put('/{user:uuid}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/{user:uuid}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::post('/{user:uuid}/unlock', [UserController::class, 'unlock'])->name('users.unlock');
     });
 
     // ============================================================
@@ -164,7 +130,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/{claim:uuid}', [FraudAlertController::class, 'show'])
             ->name('fraud-alerts.show');
         Route::post('/{claim:uuid}/assign', [FraudAlertController::class, 'assign'])
-            ->name('fraud-alerts.assign');
+            ->name('fraud-alerts.assign')
+            ->middleware('can:review-claims');
         Route::post('/{claim:uuid}/notes', [FraudAlertController::class, 'addNote'])
             ->name('fraud-alerts.add-note');
     });
@@ -212,7 +179,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     // ============================================================
     Route::prefix('disbursement')->group(function () {
         Route::post('/claims/{claim:uuid}/review', [DisbursementController::class, 'markUnderReview'])
-            ->name('disbursement.review');
+            ->name('disbursement.review')
+            ->middleware('can:review-claims');
         Route::post('/claims/{claim:uuid}/approve', [DisbursementController::class, 'approve'])
             ->name('disbursement.approve')
             ->middleware('can:approve-claims');
@@ -223,6 +191,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
             ->name('disbursement.upload-proof');
         Route::get('/claims/{claim:uuid}/proofs', [DisbursementController::class, 'getProofs'])
             ->name('disbursement.get-proofs');
+        Route::post('/claims/{claim:uuid}/reverse', [DisbursementController::class, 'reverseToCorrect'])
+            ->name('disbursement.reverse')
+            ->middleware('can:manage-settings');
     });
 
     // ============================================================
@@ -238,4 +209,20 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
             Route::put('/{setting:uuid}', [SettingsController::class, 'update'])
                 ->name('admin.settings.update');
         });
+
+    // ============================================================
+    // ADMIN - Audit Logs (Provincial Staff Only, Compliance)
+    // ============================================================
+    Route::get('admin/audit-logs', [AuditLogController::class, 'index'])
+        ->middleware('can:manage-settings')
+        ->name('admin.audit-logs.index');
+
+    // ============================================================
+    // ADMIN - Health & Queue Metrics (Provincial Staff Only)
+    // ============================================================
+    // Separate from the public /health liveness probe — this endpoint exposes
+    // queue depth, failed jobs, and fraud-scan backlog for operational monitoring.
+    Route::get('admin/health/metrics', [HealthController::class, 'metrics'])
+        ->middleware('can:manage-settings')
+        ->name('admin.health.metrics');
 });

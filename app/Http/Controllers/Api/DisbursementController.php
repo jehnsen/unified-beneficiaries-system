@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\InsufficientBudgetException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ApproveClaimRequest;
 use App\Http\Requests\MarkUnderReviewRequest;
 use App\Http\Requests\RejectClaimRequest;
+use App\Http\Requests\ReverseClaimRequest;
 use App\Http\Requests\UploadDisbursementProofRequest;
 use App\Http\Resources\ClaimResource;
 use App\Http\Resources\DisbursementProofResource;
@@ -226,6 +228,14 @@ class DisbursementController extends Controller
                 'message' => 'Disbursement proof uploaded successfully. Claim marked as DISBURSED.',
             ], 201);
 
+        } catch (InsufficientBudgetException $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'error' => 'Budget exceeded.',
+                'message' => $e->getMessage(),
+            ], 422);
+
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -291,6 +301,63 @@ class DisbursementController extends Controller
             'data' => new ClaimResource($claim->fresh()->load(['beneficiary', 'municipality', 'processedBy'])),
             'message' => 'Claim placed under review.',
         ], 200);
+    }
+
+    /**
+     * Reverse a disbursed claim and roll back its budget impact.
+     *
+     * Used when a disbursement was recorded in error (wrong beneficiary, system glitch,
+     * duplicate upload). Sets status to REVERSED, records the reason for the audit trail,
+     * and decrements the municipality's used_budget so the funds are available again.
+     *
+     * Restricted to Provincial Admin — budget rollback has province-wide fiscal implications.
+     *
+     * @route POST /api/v1/disbursement/claims/{claim:uuid}/reverse
+     */
+    public function reverseToCorrect(Claim $claim, ReverseClaimRequest $request): JsonResponse
+    {
+        if (!$claim->isDisbursed()) {
+            return response()->json([
+                'error' => 'Only disbursed claims can be reversed.',
+                'current_status' => $claim->status,
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $claim = $this->claimRepository->reverse(
+                $claim->id,
+                auth()->id(),
+                $request->validated()['reversal_reason'],
+            );
+
+            DB::commit();
+
+            Log::info('Claim reversed', [
+                'claim_id'       => $claim->id,
+                'reversed_by'    => auth()->id(),
+                'reversal_reason' => $claim->reversal_reason,
+            ]);
+
+            return response()->json([
+                'data'    => new ClaimResource($claim->load(['beneficiary', 'municipality', 'processedBy'])),
+                'message' => 'Claim reversed. Budget has been restored to the municipality.',
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to reverse claim', [
+                'claim_id' => $claim->id,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error'   => 'Failed to reverse claim.',
+                'message' => config('app.debug') ? $e->getMessage() : 'An internal error occurred.',
+            ], 500);
+        }
     }
 
     /**

@@ -38,5 +38,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('reject-claims', function (User $user) {
             return $user->isMunicipalStaff() || $user->isProvincialStaff();
         });
+
+        // Placing a claim under review and assigning fraud alerts are reviewer-level
+        // actions — ENCODERs can create claims but must not be able to transition
+        // workflow state. Restricting to REVIEWER + ADMIN closes the gap.
+        Gate::define('review-claims', function (User $user) {
+            return \in_array($user->role, ['ADMIN', 'REVIEWER'], true);
+        });
     }
 }
