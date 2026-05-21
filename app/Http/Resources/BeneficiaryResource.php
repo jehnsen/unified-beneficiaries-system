@@ -29,11 +29,13 @@ class BeneficiaryResource extends JsonResource
             'last_name' => $this->last_name,
             'middle_name' => $this->middle_name,
             'suffix' => $this->suffix,
-            'birthdate' => $this->birthdate->format('Y-m-d'),
-            'age' => $this->age,
             'gender' => $this->gender,
 
-            // Conditional fields (masked for cross-municipality viewing)
+            // Conditional fields (masked for cross-municipality viewing — RA 10173 compliance).
+            // Birthdate and age are PII; exposing them cross-LGU would allow re-identification
+            // of a beneficiary even when name masking is applied.
+            'birthdate' => $isSameMunicipality ? $this->birthdate->format('Y-m-d') : null,
+            'age' => $isSameMunicipality ? $this->age : null,
             'contact_number' => $isSameMunicipality ? $this->contact_number : '***-****-****',
             'address' => $isSameMunicipality ? $this->address : '[Hidden - Different Municipality]',
             'barangay' => $isSameMunicipality ? $this->barangay : null,

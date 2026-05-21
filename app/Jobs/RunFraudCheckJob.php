@@ -22,6 +22,10 @@ use Illuminate\Support\Facades\Log;
  *
  * On completion the claim transitions to PENDING (clean) or PENDING + is_flagged=true
  * (risky), entering the normal disbursement workflow from there.
+ *
+ * PII note: only the claim ID is stored in the queue payload. Beneficiary name and
+ * birthdate are re-fetched from the database inside handle() to avoid persisting
+ * personal information in the jobs table (RA 10173 compliance).
  */
 class RunFraudCheckJob implements ShouldQueue
 {
@@ -44,29 +48,36 @@ class RunFraudCheckJob implements ShouldQueue
 
     public function __construct(
         private readonly int $claimId,
-        private readonly string $firstName,
-        private readonly string $lastName,
-        private readonly string $birthdate,
-        private readonly string $assistanceType
     ) {
     }
 
     /**
      * Execute the fraud scan and write the result back to the claim.
      *
-     * ClaimRepositoryInterface and FraudDetectionService are resolved from the
-     * container at dispatch time (not serialized), so repository/service state
-     * is always fresh when the worker picks up the job.
+     * Beneficiary PII is loaded here (not stored in the job payload) to prevent
+     * personal data from being persisted in plaintext in the queue's jobs table.
      */
     public function handle(
         ClaimRepositoryInterface $claimRepository,
         FraudDetectionService $fraudService
     ): void {
+        $claim = $claimRepository->findById($this->claimId);
+
+        if (!$claim || !$claim->beneficiary) {
+            Log::error('RunFraudCheckJob: claim or beneficiary not found, cannot run fraud check', [
+                'claim_id' => $this->claimId,
+            ]);
+
+            return;
+        }
+
+        $beneficiary = $claim->beneficiary;
+
         $riskResult = $fraudService->checkRisk(
-            $this->firstName,
-            $this->lastName,
-            $this->birthdate,
-            $this->assistanceType
+            $beneficiary->first_name,
+            $beneficiary->last_name,
+            $beneficiary->birthdate->format('Y-m-d'),
+            $claim->assistance_type
         );
 
         $claimRepository->updateFraudResult(

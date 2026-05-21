@@ -158,13 +158,9 @@ class IntakeController extends Controller
             // Dispatch AFTER commit so the job worker can read the persisted claim row.
             // If dispatched inside the transaction the worker could pick it up before the
             // commit lands, causing a "claim not found" failure on the first attempt.
-            RunFraudCheckJob::dispatch(
-                $claim->id,
-                $beneficiary->first_name,
-                $beneficiary->last_name,
-                $beneficiary->birthdate->format('Y-m-d'),
-                $validated['assistance_type']
-            );
+            // Only the claim ID is passed — the job re-fetches PII from the DB
+            // to avoid storing personal data (name, birthdate) in the jobs table.
+            RunFraudCheckJob::dispatch($claim->id);
 
             Log::info('Claim created — fraud check queued', [
                 'claim_id' => $claim->id,

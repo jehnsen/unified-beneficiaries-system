@@ -70,6 +70,18 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        // Dedicated audit channel for RA 10173 compliance.
+        // Kept separate from the app log so audit events can be retained independently
+        // (7-year government requirement) without being polluted by or purged with
+        // routine application noise.
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit/audit.log'),
+            'level' => 'info',
+            'days' => env('AUDIT_LOG_RETENTION_DAYS', 2555), // 7 years = 365 * 7
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

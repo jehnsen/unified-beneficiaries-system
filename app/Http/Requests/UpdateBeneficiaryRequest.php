@@ -18,11 +18,15 @@ class UpdateBeneficiaryRequest extends FormRequest
             return true;
         }
 
-        // Municipal admin can update beneficiaries in their own municipality
+        // Municipal admin can update beneficiaries in their own municipality.
+        // Use the already-resolved route model (bound via {beneficiary:uuid}) rather than
+        // Beneficiary::find($this->route('id')), which would always return null because
+        // the route parameter is named 'beneficiary' and contains a UUID, not an integer ID.
         if ($user->isAdmin()) {
-            $beneficiary = Beneficiary::find($this->route('id'));
+            $beneficiary = $this->route('beneficiary');
 
-            return $beneficiary && $beneficiary->home_municipality_id === $user->municipality_id;
+            return $beneficiary instanceof Beneficiary
+                && $beneficiary->home_municipality_id === $user->municipality_id;
         }
 
         return false;
